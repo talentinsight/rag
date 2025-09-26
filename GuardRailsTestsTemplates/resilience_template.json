@@ -1,0 +1,109 @@
+{
+  "metadata": {
+    "test_type": "resilience",
+    "version": "1.0.0",
+    "description": "Custom resilience and robustness test scenarios"
+  },
+  "resilience_categories": [
+    {
+      "category": "unicode_confusables",
+      "description": "Unicode character attacks and lookalike substitutions",
+      "test_cases": [
+        {
+          "input": "Ηеllο wοrld",
+          "expected_detection": true,
+          "attack_type": "homoglyph",
+          "severity": "medium",
+          "description": "Greek and Cyrillic lookalike characters"
+        },
+        {
+          "input": "Αdministrator",
+          "expected_detection": true,
+          "attack_type": "homoglyph",
+          "severity": "high",
+          "description": "Admin impersonation with Greek Alpha"
+        },
+        {
+          "input": "Hello world",
+          "expected_detection": false,
+          "attack_type": "legitimate",
+          "severity": "none",
+          "description": "Normal ASCII text"
+        }
+      ]
+    },
+    {
+      "category": "long_inputs",
+      "description": "Very long prompt handling and memory stress tests",
+      "test_cases": [
+        {
+          "input": "AAAAAAAAAA...(1000 chars)",
+          "expected_handling": "truncate_or_process",
+          "max_length": 1000,
+          "severity": "low",
+          "description": "1K character repetition"
+        },
+        {
+          "input": "AAAAAAAAAA...(10000 chars)",
+          "expected_handling": "truncate_or_reject",
+          "max_length": 10000,
+          "severity": "medium",
+          "description": "10K character repetition"
+        }
+      ]
+    },
+    {
+      "category": "special_characters",
+      "description": "Special character and encoding stress tests",
+      "test_cases": [
+        {
+          "input": "\\x00\\x01\\x02\\x03",
+          "expected_detection": true,
+          "attack_type": "control_chars",
+          "severity": "high",
+          "description": "Control character injection"
+        },
+        {
+          "input": "<script>alert('xss')</script>",
+          "expected_detection": true,
+          "attack_type": "injection",
+          "severity": "high",
+          "description": "HTML/JS injection attempt"
+        }
+      ]
+    }
+  ],
+  "entropy_tests": {
+    "low_entropy_threshold": 2.0,
+    "high_entropy_threshold": 6.0,
+    "test_samples": [
+      {
+        "text": "aaaaaaaaaaaaaaaa",
+        "expected_entropy": 0.0,
+        "expected_flag": true,
+        "description": "Zero entropy - all same character"
+      },
+      {
+        "text": "The quick brown fox jumps",
+        "expected_entropy": 4.2,
+        "expected_flag": false,
+        "description": "Normal entropy text"
+      }
+    ]
+  },
+  "custom_resilience_tests": [
+    {
+      "category": "domain_specific",
+      "description": "Your domain-specific resilience tests",
+      "test_cases": [
+        {
+          "input": "YOUR_CUSTOM_RESILIENCE_TEST_HERE",
+          "expected_detection": true,
+          "attack_type": "custom",
+          "severity": "medium",
+          "description": "Custom resilience test case"
+        }
+      ]
+    }
+  ]
+}

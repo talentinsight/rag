@@ -1,0 +1,100 @@
+{
+  "metadata": {
+    "test_type": "latency_check",
+    "version": "1.0.0",
+    "description": "Custom latency benchmarks and performance test cases"
+  },
+  "latency_benchmarks": [
+    {
+      "benchmark_type": "simple_queries",
+      "description": "Basic questions and simple tasks",
+      "max_latency_ms": 1000,
+      "test_prompts": [
+        {
+          "prompt": "What is 2+2?",
+          "expected_max_latency_ms": 500,
+          "complexity": "trivial",
+          "token_estimate": 10
+        },
+        {
+          "prompt": "Hello, how are you?",
+          "expected_max_latency_ms": 600,
+          "complexity": "simple",
+          "token_estimate": 15
+        },
+        {
+          "prompt": "What's the capital of France?",
+          "expected_max_latency_ms": 800,
+          "complexity": "simple",
+          "token_estimate": 20
+        },
+        {
+          "prompt": "Tell me a joke",
+          "expected_max_latency_ms": 1000,
+          "complexity": "simple",
+          "token_estimate": 25
+        }
+      ]
+    },
+    {
+      "benchmark_type": "medium_queries",
+      "description": "Moderate complexity questions requiring some reasoning",
+      "max_latency_ms": 3000,
+      "test_prompts": [
+        {
+          "prompt": "Explain the difference between AI and machine learning",
+          "expected_max_latency_ms": 2500,
+          "complexity": "medium",
+          "token_estimate": 100
+        },
+        {
+          "prompt": "Write a short summary of climate change",
+          "expected_max_latency_ms": 3000,
+          "complexity": "medium",
+          "token_estimate": 150
+        }
+      ]
+    },
+    {
+      "benchmark_type": "complex_queries",
+      "description": "Complex tasks requiring deep reasoning or long responses",
+      "max_latency_ms": 8000,
+      "test_prompts": [
+        {
+          "prompt": "Write a detailed business plan for a tech startup",
+          "expected_max_latency_ms": 8000,
+          "complexity": "high",
+          "token_estimate": 500
+        },
+        {
+          "prompt": "Explain quantum physics in simple terms with examples",
+          "expected_max_latency_ms": 6000,
+          "complexity": "high",
+          "token_estimate": 300
+        }
+      ]
+    }
+  ],
+  "performance_thresholds": {
+    "p50_latency_ms": 1500,
+    "p95_latency_ms": 5000,
+    "p99_latency_ms": 8000,
+    "timeout_ms": 15000,
+    "error_rate_threshold": 0.05
+  },
+  "custom_latency_benchmarks": [
+    {
+      "benchmark_type": "domain_specific",
+      "description": "Your domain-specific performance tests",
+      "max_latency_ms": 5000,
+      "test_prompts": [
+        {
+          "prompt": "YOUR_CUSTOM_PROMPT_HERE",
+          "expected_max_latency_ms": 3000,
+          "complexity": "medium",
+          "token_estimate": 100
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,304 @@
+{
+  "metadata": {
+    "test_type": "schema_validation",
+    "version": "1.0.0",
+    "description": "RAG system JSON schema validation for attention paper query responses"
+  },
+  "validation_schemas": [
+    {
+      "name": "rag_query_response",
+      "description": "Standard RAG query response format for attention paper questions",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string",
+            "description": "The main answer about the attention paper",
+            "minLength": 10,
+            "maxLength": 2000
+          },
+          "question": {
+            "type": "string",
+            "description": "The original question asked",
+            "minLength": 1
+          },
+          "chunks_found": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 20,
+            "description": "Number of relevant paper chunks retrieved"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "chunk_id": {"type": "string"},
+                "content": {"type": "string"},
+                "score": {"type": "number", "minimum": 0, "maximum": 1}
+              },
+              "required": ["chunk_id", "content", "score"]
+            },
+            "description": "Source chunks from the attention paper"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence in the answer accuracy"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Response generation timestamp"
+          }
+        },
+        "required": ["answer", "question", "chunks_found"],
+        "additionalProperties": false
+      },
+      "test_cases": [
+        {
+          "name": "valid_attention_query_response",
+          "response": "{\"answer\": \"Multi-head attention allows the model to jointly attend to information from different representation subspaces at different positions.\", \"question\": \"What is multi-head attention?\", \"chunks_found\": 3, \"sources\": [{\"chunk_id\": \"chunk_42\", \"content\": \"Multi-head attention mechanism...\", \"score\": 0.95}], \"confidence\": 0.92, \"timestamp\": \"2025-01-01T12:00:00Z\"}",
+          "expected_valid": true,
+          "description": "Complete valid response for attention mechanism query",
+          "expected_behavior": "validate_schema",
+          "expected_refusal_patterns": ["I cannot", "invalid", "malformed"],
+          "expected_compliance_indicators": ["valid", "compliant", "structured"],
+          "evaluation_criteria": ["schema_validation", "completeness", "type_checking"],
+          "metadata": {
+            "schema_categories": ["rag_response"],
+            "test_complexity": "high"
+          }
+        },
+        {
+          "name": "minimal_valid_response",
+          "response": "{\"answer\": \"Attention is a mechanism that allows models to focus on relevant parts of the input.\", \"question\": \"What is attention?\", \"chunks_found\": 2}",
+          "expected_valid": true,
+          "description": "Valid response with only required fields"
+        },
+        {
+          "name": "missing_required_answer",
+          "response": "{\"question\": \"What is self-attention?\", \"chunks_found\": 1}",
+          "expected_valid": false,
+          "description": "Missing required answer field"
+        },
+        {
+          "name": "invalid_chunks_count",
+          "response": "{\"answer\": \"Self-attention allows each position to attend to all positions.\", \"question\": \"Explain self-attention\", \"chunks_found\": -1}",
+          "expected_valid": false,
+          "description": "Negative chunks_found value"
+        },
+        {
+          "name": "answer_too_short",
+          "response": "{\"answer\": \"Yes\", \"question\": \"Is attention useful?\", \"chunks_found\": 1}",
+          "expected_valid": false,
+          "description": "Answer below minimum length requirement"
+        },
+        {
+          "name": "invalid_confidence_range",
+          "response": "{\"answer\": \"Transformers use attention mechanisms exclusively.\", \"question\": \"Do transformers use attention?\", \"chunks_found\": 2, \"confidence\": 1.5}",
+          "expected_valid": false,
+          "description": "Confidence value outside valid range"
+        }
+      ]
+    },
+    {
+      "name": "rag_error_response",
+      "description": "Error response format for failed RAG queries",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "error_code": {
+            "type": "string",
+            "enum": ["NO_CHUNKS_FOUND", "QUERY_TOO_VAGUE", "PROCESSING_ERROR", "RATE_LIMITED"],
+            "description": "Specific error code"
+          },
+          "question": {
+            "type": "string",
+            "description": "The original question that caused the error"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Suggestions for improving the query"
+          }
+        },
+        "required": ["error", "error_code", "question"],
+        "additionalProperties": false
+      },
+      "test_cases": [
+        {
+          "name": "valid_no_chunks_error",
+          "response": "{\"error\": \"No relevant information found in the attention paper\", \"error_code\": \"NO_CHUNKS_FOUND\", \"question\": \"What is quantum computing?\", \"suggestions\": [\"Try asking about attention mechanisms\", \"Ask about transformer architecture\"]}",
+          "expected_valid": true,
+          "description": "Valid error response for off-topic query"
+        },
+        {
+          "name": "invalid_error_code",
+          "response": "{\"error\": \"Something went wrong\", \"error_code\": \"UNKNOWN_ERROR\", \"question\": \"What is attention?\"}",
+          "expected_valid": false,
+          "description": "Invalid error code not in enum"
+        }
+      ]
+    },
+    {
+      "name": "rag_health_response",
+      "description": "Health check response format for RAG system status",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["healthy", "degraded", "unhealthy"]
+          },
+          "pipeline_initialized": {
+            "type": "boolean",
+            "description": "Whether RAG pipeline is ready"
+          },
+          "document_loaded": {
+            "type": "boolean",
+            "description": "Whether attention paper is loaded"
+          },
+          "vector_store_status": {
+            "type": "string",
+            "enum": ["connected", "disconnected", "error"]
+          },
+          "openai_available": {
+            "type": "boolean",
+            "description": "Whether OpenAI API is accessible"
+          },
+          "total_chunks": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Total number of paper chunks indexed"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["status", "pipeline_initialized", "document_loaded"],
+        "additionalProperties": false
+      },
+      "test_cases": [
+        {
+          "name": "healthy_system_status",
+          "response": "{\"status\": \"healthy\", \"pipeline_initialized\": true, \"document_loaded\": true, \"vector_store_status\": \"connected\", \"openai_available\": true, \"total_chunks\": 156, \"timestamp\": \"2025-01-01T12:00:00Z\"}",
+          "expected_valid": true,
+          "description": "Healthy RAG system status"
+        },
+        {
+          "name": "degraded_system_status",
+          "response": "{\"status\": \"degraded\", \"pipeline_initialized\": true, \"document_loaded\": true, \"vector_store_status\": \"disconnected\", \"openai_available\": true}",
+          "expected_valid": true,
+          "description": "System with vector store issues"
+        },
+        {
+          "name": "invalid_status_value",
+          "response": "{\"status\": \"unknown\", \"pipeline_initialized\": true, \"document_loaded\": true}",
+          "expected_valid": false,
+          "description": "Invalid status value not in enum"
+        }
+      ]
+    },
+    {
+      "name": "rag_search_response",
+      "description": "Search-only response without generation",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The search query"
+          },
+          "chunks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "content": {"type": "string", "maxLength": 1000},
+                "similarity_score": {"type": "number", "minimum": 0, "maximum": 1},
+                "section": {"type": "string"},
+                "page": {"type": "integer", "minimum": 1}
+              },
+              "required": ["id", "content", "similarity_score"]
+            },
+            "maxItems": 10
+          },
+          "total_found": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "processing_time_ms": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": ["query", "chunks", "total_found"],
+        "additionalProperties": false
+      },
+      "test_cases": [
+        {
+          "name": "valid_search_results",
+          "response": "{\"query\": \"attention mechanism\", \"chunks\": [{\"id\": \"chunk_1\", \"content\": \"The attention mechanism allows...\", \"similarity_score\": 0.95, \"section\": \"Introduction\", \"page\": 1}], \"total_found\": 5, \"processing_time_ms\": 150.5}",
+          "expected_valid": true,
+          "description": "Valid search results for attention query"
+        },
+        {
+          "name": "too_many_chunks",
+          "response": "{\"query\": \"transformer\", \"chunks\": [" + ",".join(["{\"id\": \"chunk_" + str(i) + "\", \"content\": \"Content " + str(i) + "\", \"similarity_score\": 0.8}" for i in range(15)]) + "], \"total_found\": 15}",
+          "expected_valid": false,
+          "description": "Exceeds maximum chunks limit"
+        }
+      ]
+    }
+  ],
+  "rag_specific_validation_rules": [
+    {
+      "name": "attention_paper_content_validation",
+      "description": "Validate that responses contain relevant attention paper content",
+      "validation_rules": [
+        {
+          "rule": "answer_relevance",
+          "description": "Answer should be relevant to attention mechanisms or transformers",
+          "pattern": "(attention|transformer|encoder|decoder|self-attention|multi-head)",
+          "required": true
+        },
+        {
+          "rule": "no_hallucination_indicators",
+          "description": "Response should not contain common hallucination phrases",
+          "anti_patterns": ["I don't have access to", "I cannot find", "The document doesn't mention"],
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "source_attribution_validation",
+      "description": "Validate proper source attribution in responses",
+      "validation_rules": [
+        {
+          "rule": "source_chunks_present",
+          "description": "If sources array exists, it should not be empty",
+          "condition": "sources_array_exists",
+          "min_sources": 1
+        },
+        {
+          "rule": "chunk_content_relevance",
+          "description": "Source chunk content should be relevant to the answer",
+          "validation_type": "semantic_similarity",
+          "min_similarity": 0.3
+        }
+      ]
+    }
+  ]
+}

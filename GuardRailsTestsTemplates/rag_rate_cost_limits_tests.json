@@ -1,0 +1,336 @@
+{
+  "metadata": {
+    "test_type": "rate_cost_limits",
+    "version": "1.0.0",
+    "description": "RAG system rate limiting and cost monitoring for attention paper queries"
+  },
+  "rate_limit_tests": [
+    {
+      "limit_type": "requests_per_minute",
+      "description": "Request rate limiting for RAG queries",
+      "threshold": 60,
+      "test_scenarios": [
+        {
+          "scenario_name": "normal_rag_usage",
+          "description": "Normal usage pattern for attention paper queries",
+          "request_rate": 30,
+          "duration_seconds": 60,
+          "query_types": ["simple_attention_queries", "moderate_complexity"],
+          "expected_pass": true,
+          "expected_throttling": false,
+          "sample_queries": [
+            "What is attention?",
+            "How does self-attention work?",
+            "Explain multi-head attention"
+          ]
+        },
+        {
+          "scenario_name": "burst_rag_queries",
+          "description": "Burst of rapid RAG queries",
+          "request_rate": 80,
+          "duration_seconds": 60,
+          "query_types": ["rapid_fire_questions"],
+          "expected_pass": false,
+          "expected_throttling": true,
+          "sample_queries": [
+            "What is attention?" * 20,
+            "Define transformer" * 20,
+            "Explain encoder" * 20
+          ]
+        },
+        {
+          "scenario_name": "research_session",
+          "description": "Intensive research session pattern",
+          "request_rate": 45,
+          "duration_seconds": 60,
+          "query_types": ["deep_research_queries"],
+          "expected_pass": true,
+          "expected_throttling": false,
+          "sample_queries": [
+            "Detailed mathematical formulation of attention",
+            "Compare transformer with RNN architectures",
+            "Explain positional encoding in depth"
+          ]
+        }
+      ]
+    },
+    {
+      "limit_type": "concurrent_requests",
+      "description": "Concurrent request limiting for RAG system",
+      "threshold": 10,
+      "test_scenarios": [
+        {
+          "scenario_name": "normal_concurrency",
+          "description": "Normal concurrent usage",
+          "concurrent_requests": 5,
+          "query_complexity": "medium",
+          "expected_pass": true,
+          "expected_queue_time_ms": 100
+        },
+        {
+          "scenario_name": "high_concurrency",
+          "description": "High concurrent load",
+          "concurrent_requests": 15,
+          "query_complexity": "high",
+          "expected_pass": false,
+          "expected_queue_time_ms": 2000
+        }
+      ]
+    }
+  ],
+  "cost_limit_tests": [
+    {
+      "cost_type": "openai_api_cost_per_hour",
+      "description": "OpenAI API cost monitoring for RAG operations",
+      "threshold_usd": 5.00,
+      "test_scenarios": [
+        {
+          "scenario_name": "efficient_rag_usage",
+          "description": "Cost-efficient RAG queries",
+          "estimated_cost_usd": 2.50,
+          "query_count": 100,
+          "avg_tokens_per_query": 500,
+          "retrieval_operations": 100,
+          "generation_operations": 100,
+          "expected_pass": true,
+          "expected_alert": false,
+          "cost_breakdown": {
+            "embedding_cost": 0.50,
+            "generation_cost": 2.00
+          }
+        },
+        {
+          "scenario_name": "expensive_rag_usage",
+          "description": "High-cost RAG operations",
+          "estimated_cost_usd": 7.50,
+          "query_count": 50,
+          "avg_tokens_per_query": 2000,
+          "retrieval_operations": 50,
+          "generation_operations": 50,
+          "expected_pass": false,
+          "expected_alert": true,
+          "cost_breakdown": {
+            "embedding_cost": 1.50,
+            "generation_cost": 6.00
+          }
+        },
+        {
+          "scenario_name": "complex_research_queries",
+          "description": "Complex queries requiring extensive generation",
+          "estimated_cost_usd": 4.25,
+          "query_count": 25,
+          "avg_tokens_per_query": 1500,
+          "retrieval_operations": 25,
+          "generation_operations": 25,
+          "expected_pass": true,
+          "expected_alert": false,
+          "cost_breakdown": {
+            "embedding_cost": 0.75,
+            "generation_cost": 3.50
+          }
+        }
+      ]
+    },
+    {
+      "cost_type": "vector_database_operations",
+      "description": "Vector database operation cost monitoring",
+      "threshold_operations": 1000,
+      "test_scenarios": [
+        {
+          "scenario_name": "normal_retrieval_load",
+          "description": "Normal vector similarity search load",
+          "operations_count": 500,
+          "operation_types": ["similarity_search", "chunk_retrieval"],
+          "expected_pass": true,
+          "expected_alert": false
+        },
+        {
+          "scenario_name": "heavy_retrieval_load",
+          "description": "Heavy vector database usage",
+          "operations_count": 1200,
+          "operation_types": ["similarity_search", "chunk_retrieval", "bulk_operations"],
+          "expected_pass": false,
+          "expected_alert": true
+        }
+      ]
+    }
+  ],
+  "token_usage_tests": [
+    {
+      "usage_type": "input_tokens_rag",
+      "description": "Input token consumption for RAG queries",
+      "threshold": 50000,
+      "test_scenarios": [
+        {
+          "scenario_name": "normal_query_tokens",
+          "description": "Normal RAG query token usage",
+          "token_count": 25000,
+          "query_types": ["simple", "medium_complexity"],
+          "avg_tokens_per_query": 250,
+          "expected_pass": true
+        },
+        {
+          "scenario_name": "complex_query_tokens",
+          "description": "Complex RAG queries with high token usage",
+          "token_count": 60000,
+          "query_types": ["complex", "detailed_analysis"],
+          "avg_tokens_per_query": 1200,
+          "expected_pass": false
+        }
+      ]
+    },
+    {
+      "usage_type": "output_tokens_rag",
+      "description": "Output token generation for RAG responses",
+      "threshold": 75000,
+      "test_scenarios": [
+        {
+          "scenario_name": "concise_responses",
+          "description": "Concise RAG response generation",
+          "token_count": 40000,
+          "avg_response_length": 400,
+          "response_types": ["direct_answers", "explanations"],
+          "expected_pass": true
+        },
+        {
+          "scenario_name": "detailed_responses",
+          "description": "Detailed RAG response generation",
+          "token_count": 85000,
+          "avg_response_length": 850,
+          "response_types": ["comprehensive_analysis", "detailed_explanations"],
+          "expected_pass": false
+        }
+      ]
+    }
+  ],
+  "rag_specific_limits": [
+    {
+      "limit_type": "retrieval_operations_per_query",
+      "description": "Limit vector similarity searches per query",
+      "threshold": 5,
+      "test_scenarios": [
+        {
+          "scenario_name": "efficient_retrieval",
+          "description": "Efficient single-pass retrieval",
+          "retrieval_count": 3,
+          "query_complexity": "medium",
+          "expected_pass": true
+        },
+        {
+          "scenario_name": "excessive_retrieval",
+          "description": "Excessive retrieval operations",
+          "retrieval_count": 8,
+          "query_complexity": "high",
+          "expected_pass": false
+        }
+      ]
+    },
+    {
+      "limit_type": "chunk_processing_per_query",
+      "description": "Limit number of chunks processed per query",
+      "threshold": 10,
+      "test_scenarios": [
+        {
+          "scenario_name": "normal_chunk_processing",
+          "description": "Normal chunk processing load",
+          "chunks_processed": 6,
+          "chunk_size_avg": 500,
+          "expected_pass": true
+        },
+        {
+          "scenario_name": "excessive_chunk_processing",
+          "description": "Processing too many chunks",
+          "chunks_processed": 15,
+          "chunk_size_avg": 600,
+          "expected_pass": false
+        }
+      ]
+    }
+  ],
+  "provider_limits": {
+    "openai_gpt4": {
+      "requests_per_minute": 500,
+      "tokens_per_minute": 30000,
+      "requests_per_day": 10000,
+      "cost_per_1k_input_tokens": 0.03,
+      "cost_per_1k_output_tokens": 0.06
+    },
+    "openai_embeddings": {
+      "requests_per_minute": 3000,
+      "tokens_per_minute": 1000000,
+      "cost_per_1k_tokens": 0.0001
+    },
+    "weaviate_cloud": {
+      "queries_per_second": 100,
+      "storage_gb": 10,
+      "monthly_cost_base": 25.00
+    }
+  },
+  "cost_optimization_scenarios": [
+    {
+      "scenario_name": "cache_hit_optimization",
+      "description": "Test cost savings from caching similar queries",
+      "cache_hit_rate": 0.7,
+      "cost_reduction_expected": 0.4,
+      "test_queries": [
+        "What is attention mechanism?",
+        "What is attention mechanism?",
+        "Explain attention mechanism",
+        "What is the attention mechanism?"
+      ]
+    },
+    {
+      "scenario_name": "chunk_size_optimization",
+      "description": "Test cost impact of different chunk sizes",
+      "chunk_sizes": [256, 512, 1024],
+      "expected_cost_impact": {
+        "256": "lower_retrieval_higher_generation",
+        "512": "balanced",
+        "1024": "higher_retrieval_lower_generation"
+      }
+    }
+  ],
+  "alert_thresholds": [
+    {
+      "metric": "cost_per_hour",
+      "warning_threshold": 3.00,
+      "critical_threshold": 5.00,
+      "action": "notify_admin"
+    },
+    {
+      "metric": "requests_per_minute",
+      "warning_threshold": 45,
+      "critical_threshold": 60,
+      "action": "enable_rate_limiting"
+    },
+    {
+      "metric": "error_rate",
+      "warning_threshold": 0.05,
+      "critical_threshold": 0.10,
+      "action": "investigate_system_health"
+    }
+  ],
+  "custom_rag_scenarios": [
+    {
+      "limit_type": "paper_specific_queries",
+      "description": "Limits specific to attention paper queries",
+      "threshold": 100,
+      "test_scenarios": [
+        {
+          "scenario_name": "attention_paper_research",
+          "description": "Intensive research on attention paper",
+          "query_count": 75,
+          "query_focus": "attention_mechanisms_only",
+          "expected_pass": true
+        },
+        {
+          "scenario_name": "excessive_paper_queries",
+          "description": "Excessive queries about the same paper",
+          "query_count": 120,
+          "query_focus": "repetitive_attention_queries",
+          "expected_pass": false
+        }
+      ]
+    }
+  ]
+}

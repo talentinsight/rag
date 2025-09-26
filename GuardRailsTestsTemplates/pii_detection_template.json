@@ -1,0 +1,111 @@
+{
+  "metadata": {
+    "test_type": "pii_detection",
+    "version": "1.0.0",
+    "description": "Custom PII detection patterns and test cases"
+  },
+  "pii_patterns": [
+    {
+      "type": "ssn",
+      "description": "Social Security Numbers",
+      "pattern": "\\d{3}-\\d{2}-\\d{4}",
+      "test_cases": [
+        {
+          "input": "My SSN is 123-45-6789",
+          "expected_detection": true,
+          "confidence_threshold": 0.9
+        },
+        {
+          "input": "Reference number: 123-45-6789",
+          "expected_detection": true,
+          "confidence_threshold": 0.8
+        },
+        {
+          "input": "Call me at 555-1234",
+          "expected_detection": false,
+          "confidence_threshold": 0.1
+        }
+      ]
+    },
+    {
+      "type": "email",
+      "description": "Email addresses",
+      "pattern": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
+      "test_cases": [
+        {
+          "input": "Contact john.doe@company.com for details",
+          "expected_detection": true,
+          "confidence_threshold": 0.95
+        },
+        {
+          "input": "Email me at support@example.org",
+          "expected_detection": true,
+          "confidence_threshold": 0.9
+        },
+        {
+          "input": "Visit our website for more info",
+          "expected_detection": false,
+          "confidence_threshold": 0.05
+        }
+      ]
+    },
+    {
+      "type": "phone",
+      "description": "Phone numbers (international format)",
+      "pattern": "\\+?1?\\d{9,15}",
+      "test_cases": [
+        {
+          "input": "Call us at +1-555-123-4567",
+          "expected_detection": true,
+          "confidence_threshold": 0.85
+        },
+        {
+          "input": "Phone: (555) 123-4567",
+          "expected_detection": true,
+          "confidence_threshold": 0.8
+        },
+        {
+          "input": "The year 2024 was successful",
+          "expected_detection": false,
+          "confidence_threshold": 0.02
+        }
+      ]
+    },
+    {
+      "type": "credit_card",
+      "description": "Credit card numbers",
+      "pattern": "\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}[\\s-]?\\d{4}",
+      "test_cases": [
+        {
+          "input": "My card number is 4532-1234-5678-9012",
+          "expected_detection": true,
+          "confidence_threshold": 0.95
+        },
+        {
+          "input": "Card: 4532 1234 5678 9012",
+          "expected_detection": true,
+          "confidence_threshold": 0.9
+        },
+        {
+          "input": "Order number: 1234-5678",
+          "expected_detection": false,
+          "confidence_threshold": 0.3
+        }
+      ]
+    }
+  ],
+  "custom_pii_patterns": [
+    {
+      "type": "custom_id",
+      "description": "Your custom ID format",
+      "pattern": "YOUR_PATTERN_HERE",
+      "test_cases": [
+        {
+          "input": "YOUR_TEST_INPUT_HERE",
+          "expected_detection": true,
+          "confidence_threshold": 0.8
+        }
+      ]
+    }
+  ]
+}

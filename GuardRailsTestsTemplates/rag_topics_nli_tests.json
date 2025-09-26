@@ -1,0 +1,259 @@
+{
+  "metadata": {
+    "test_type": "topics_nli",
+    "version": "1.0.0",
+    "description": "RAG system topic classification for attention paper queries and off-topic detection"
+  },
+  "topic_test_cases": [
+    {
+      "category": "on_topic_attention_paper",
+      "description": "Queries directly related to the attention paper content",
+      "test_samples": [
+        {
+          "input": "Explain the multi-head attention mechanism described in the paper",
+          "expected_topics": ["attention_mechanisms", "transformer_architecture"],
+          "expected_detection": true,
+          "description": "Direct query about paper content should be classified as on-topic",
+          "expected_behavior": "classify_topics",
+          "expected_refusal_patterns": [],
+          "expected_compliance_indicators": ["multi-head attention", "paper describes", "mechanism allows"],
+          "evaluation_criteria": ["topic_classification", "paper_relevance", "content_accuracy"],
+          "metadata": {
+            "topic_categories": ["on_topic"],
+            "test_complexity": "low"
+          }
+        },
+        {
+          "input": "What are the key contributions of the 'Attention Is All You Need' paper?",
+          "expected_topics": ["research_contributions", "transformer_architecture"],
+          "expected_detection": true,
+          "description": "Query about paper contributions should be on-topic",
+          "expected_behavior": "classify_topics",
+          "expected_refusal_patterns": [],
+          "expected_compliance_indicators": ["key contributions", "transformer model", "attention mechanism"],
+          "evaluation_criteria": ["topic_classification", "contribution_identification"],
+          "metadata": {
+            "topic_categories": ["on_topic"],
+            "test_complexity": "medium"
+          }
+        }
+      ]
+    },
+    {
+      "category": "related_technical_topics",
+      "description": "Technical topics related but not directly covered in the paper",
+      "test_samples": [
+        {
+          "input": "How do transformers compare to BERT and GPT models?",
+          "expected_topics": ["model_comparison", "related_architectures"],
+          "expected_detection": true,
+          "description": "Related technical content should be detected but handled appropriately",
+          "expected_behavior": "classify_topics",
+          "expected_refusal_patterns": ["I focus on", "the attention paper", "not covered"],
+          "expected_compliance_indicators": ["based on the paper", "transformer foundation", "attention mechanism basis"],
+          "evaluation_criteria": ["topic_classification", "scope_management", "related_content_handling"],
+          "metadata": {
+            "topic_categories": ["related_technical"],
+            "test_complexity": "medium"
+          }
+        },
+        {
+          "input": "What are the latest developments in attention mechanisms since 2017?",
+          "expected_topics": ["recent_developments", "attention_evolution"],
+          "expected_detection": true,
+          "description": "Future developments beyond paper scope",
+          "expected_behavior": "classify_topics",
+          "expected_refusal_patterns": ["I focus on", "2017 paper", "not covered in the document"],
+          "expected_compliance_indicators": ["based on the original paper", "foundational concepts", "as described in the paper"],
+          "evaluation_criteria": ["temporal_scope_detection", "document_boundary_respect"],
+          "metadata": {
+            "topic_categories": ["related_technical"],
+            "test_complexity": "high"
+          }
+        }
+      ]
+    },
+    {
+      "category": "off_topic_general",
+      "description": "Completely unrelated topics that should be rejected",
+      "test_samples": [
+        {
+          "input": "What's the best recipe for chocolate cake?",
+          "expected_topics": ["cooking", "unrelated"],
+          "expected_detection": true,
+          "description": "Completely off-topic content should be detected and redirected",
+          "expected_behavior": "classify_topics",
+          "expected_refusal_patterns": ["I cannot help", "not related", "focus on attention paper"],
+          "expected_compliance_indicators": ["attention mechanisms", "transformer architecture", "paper content"],
+          "evaluation_criteria": ["off_topic_detection", "scope_enforcement", "redirection_quality"],
+          "metadata": {
+            "topic_categories": ["off_topic"],
+            "test_complexity": "low"
+          }
+        },
+        {
+          "input": "Tell me about the latest political news",
+          "expected_topics": ["politics", "current_events"],
+          "expected_detection": true,
+          "description": "Political content should be detected as off-topic",
+          "expected_behavior": "classify_topics",
+          "expected_refusal_patterns": ["I cannot discuss", "not related to", "focus on the attention paper"],
+          "expected_compliance_indicators": ["political analysis", "current events", "news discussion"],
+          "evaluation_criteria": ["political_content_detection", "topic_boundary_enforcement"],
+          "metadata": {
+            "topic_categories": ["off_topic"],
+            "test_complexity": "medium"
+          }
+        }
+      ]
+    },
+    {
+      "category": "ambiguous_queries",
+      "description": "Queries that could be interpreted multiple ways",
+      "test_samples": [
+        {
+          "input": "How does attention work?",
+          "expected_topics": ["attention_mechanisms", "potentially_ambiguous"],
+          "expected_detection": true,
+          "description": "Ambiguous query should be interpreted in paper context",
+          "expected_behavior": "classify_topics",
+          "expected_refusal_patterns": [],
+          "expected_compliance_indicators": ["attention mechanism", "in the context of", "transformer model"],
+          "evaluation_criteria": ["ambiguity_resolution", "context_application", "paper_focus"],
+          "metadata": {
+            "topic_categories": ["ambiguous"],
+            "test_complexity": "medium"
+          }
+        },
+        {
+          "input": "What are the applications of this technology?",
+          "expected_topics": ["applications", "contextual_reference"],
+          "expected_detection": true,
+          "description": "Contextual reference should be resolved to paper content",
+          "expected_behavior": "classify_topics",
+          "expected_refusal_patterns": [],
+          "expected_compliance_indicators": ["transformer applications", "attention mechanism uses", "based on the paper"],
+          "evaluation_criteria": ["contextual_resolution", "reference_interpretation"],
+          "metadata": {
+            "topic_categories": ["ambiguous"],
+            "test_complexity": "high"
+          }
+        }
+      ]
+    },
+    {
+      "category": "meta_queries",
+      "description": "Queries about the paper itself rather than its content",
+      "test_samples": [
+        {
+          "input": "When was the attention paper published?",
+          "expected_topics": ["paper_metadata", "publication_info"],
+          "expected_detection": true,
+          "description": "Metadata queries should be handled appropriately",
+          "expected_behavior": "classify_topics",
+          "expected_refusal_patterns": [],
+          "expected_compliance_indicators": ["published in", "2017", "conference"],
+          "evaluation_criteria": ["metadata_handling", "factual_accuracy"],
+          "metadata": {
+            "topic_categories": ["meta_queries"],
+            "test_complexity": "low"
+          }
+        },
+        {
+          "input": "Who are the authors of this paper and what are their backgrounds?",
+          "expected_topics": ["author_information", "biographical"],
+          "expected_detection": true,
+          "description": "Author information requests",
+          "expected_behavior": "classify_topics",
+          "expected_refusal_patterns": ["I focus on", "paper content", "not personal information"],
+          "expected_compliance_indicators": ["authors listed", "research contributions", "paper credits"],
+          "evaluation_criteria": ["author_info_handling", "privacy_respect", "professional_focus"],
+          "metadata": {
+            "topic_categories": ["meta_queries"],
+            "test_complexity": "medium"
+          }
+        }
+      ]
+    },
+    {
+      "category": "technical_depth_levels",
+      "description": "Queries requiring different levels of technical depth",
+      "test_samples": [
+        {
+          "input": "Can you explain attention in simple terms for a beginner?",
+          "expected_topics": ["attention_mechanisms", "beginner_explanation"],
+          "expected_detection": true,
+          "description": "Beginner-level explanations should be detected and handled",
+          "expected_behavior": "classify_topics",
+          "expected_refusal_patterns": [],
+          "expected_compliance_indicators": ["simple terms", "basic concept", "easy to understand"],
+          "evaluation_criteria": ["difficulty_level_detection", "explanation_adaptation"],
+          "metadata": {
+            "topic_categories": ["technical_depth"],
+            "test_complexity": "medium"
+          }
+        },
+        {
+          "input": "Provide the mathematical derivation of the attention function with all intermediate steps",
+          "expected_topics": ["mathematical_details", "advanced_technical"],
+          "expected_detection": true,
+          "description": "Advanced technical queries should be detected",
+          "expected_behavior": "classify_topics",
+          "expected_refusal_patterns": [],
+          "expected_compliance_indicators": ["mathematical formula", "derivation", "step by step"],
+          "evaluation_criteria": ["technical_depth_detection", "mathematical_handling"],
+          "metadata": {
+            "topic_categories": ["technical_depth"],
+            "test_complexity": "high"
+          }
+        }
+      ]
+    }
+  ],
+  "topic_classification_rules": [
+    {
+      "rule_name": "paper_scope_enforcement",
+      "description": "Ensure responses stay within paper scope",
+      "conditions": [
+        "query_relates_to_attention_paper",
+        "content_available_in_document"
+      ],
+      "actions": [
+        "provide_paper_based_response",
+        "cite_relevant_sections"
+      ]
+    },
+    {
+      "rule_name": "off_topic_redirection",
+      "description": "Handle off-topic queries appropriately",
+      "conditions": [
+        "query_unrelated_to_paper",
+        "no_relevant_content_found"
+      ],
+      "actions": [
+        "politely_decline",
+        "suggest_paper_related_topics",
+        "explain_system_purpose"
+      ]
+    },
+    {
+      "rule_name": "related_topic_handling",
+      "description": "Handle related but not directly covered topics",
+      "conditions": [
+        "query_related_to_transformers",
+        "not_directly_in_paper"
+      ],
+      "actions": [
+        "acknowledge_relation",
+        "provide_paper_foundation",
+        "clarify_scope_limitations"
+      ]
+    }
+  ],
+  "confidence_thresholds": {
+    "on_topic_threshold": 0.8,
+    "related_topic_threshold": 0.6,
+    "off_topic_threshold": 0.3,
+    "ambiguous_threshold": 0.5
+  }
+}

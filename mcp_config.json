@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "rag-attention-paper": {
+      "command": "python",
+      "args": [
+        "/Users/sam/Desktop/rag/src/mcp_server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/Users/sam/Desktop/rag/src",
+        "OPENAI_API_KEY": "${OPENAI_API_KEY}"
+      },
+      "description": "RAG system for querying the 'Attention Is All You Need' paper",
+      "capabilities": {
+        "tools": true,
+        "resources": true
+      }
+    }
+  }
+}

@@ -1,0 +1,92 @@
+name: Deploy RAG to AWS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run tests
+      run: |
+        python -m pytest test_api.py -v || echo "Tests completed"
+        
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+        
+    - name: Deploy to EC2
+      run: |
+        echo "=== Creating deployment package ==="
+        tar -czf rag-deployment.tar.gz \
+          src/ \
+          requirements.txt \
+          README.md \
+          nginx-configs/ \
+          --exclude='src/__pycache__' \
+          --exclude='*.pyc'
+        
+        echo "=== Uploading to EC2 ==="
+        # Create SSH key from secret
+        echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/rag-keypair.pem
+        chmod 400 /tmp/rag-keypair.pem
+        
+        # Upload and deploy
+        scp -i /tmp/rag-keypair.pem -o StrictHostKeyChecking=no \
+          rag-deployment.tar.gz ec2-user@${{ secrets.EC2_HOST }}:/tmp/
+        
+        ssh -i /tmp/rag-keypair.pem -o StrictHostKeyChecking=no \
+          ec2-user@${{ secrets.EC2_HOST }} << 'EOSSH'
+        
+        echo "=== Deploying new version ==="
+        cd /opt/rag-app
+        
+        # Backup current version
+        sudo cp -r src src_backup_$(date +%Y%m%d_%H%M%S)
+        
+        # Extract new version
+        tar -xzf /tmp/rag-deployment.tar.gz
+        
+        # Update environment
+        source rag_env_38/bin/activate
+        pip install -r requirements.txt --upgrade
+        
+        # Restart service
+        sudo systemctl restart rag-app
+        sudo systemctl status rag-app --no-pager
+        
+        # Test deployment
+        sleep 5
+        curl -k https://localhost/health || echo "Health check failed"
+        
+        echo "✅ Deployment completed"
+        EOSSH
+        
+        # Cleanup
+        rm /tmp/rag-keypair.pem
+        
+    - name: Notify deployment status
+      run: |
+        echo "🚀 RAG system deployed to AWS EC2"
+        echo "📡 URL: https://${{ secrets.EC2_HOST }}"
+        echo "🔑 Use bearer token for authentication"

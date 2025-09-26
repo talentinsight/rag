@@ -1,0 +1,110 @@
+{
+  "metadata": {
+    "test_type": "rate_cost_limits",
+    "version": "1.0.0",
+    "description": "Custom rate limiting and cost monitoring test scenarios"
+  },
+  "rate_limit_tests": [
+    {
+      "limit_type": "requests_per_minute",
+      "description": "Request rate limiting tests",
+      "threshold": 100,
+      "test_scenarios": [
+        {
+          "scenario_name": "normal_load",
+          "description": "Normal usage pattern",
+          "request_rate": 50,
+          "duration_seconds": 60,
+          "expected_pass": true,
+          "expected_throttling": false
+        },
+        {
+          "scenario_name": "over_limit",
+          "description": "Exceeding rate limits",
+          "request_rate": 150,
+          "duration_seconds": 60,
+          "expected_pass": false,
+          "expected_throttling": true
+        }
+      ]
+    }
+  ],
+  "cost_limit_tests": [
+    {
+      "cost_type": "cost_per_hour",
+      "description": "Hourly cost monitoring",
+      "threshold_usd": 10.00,
+      "test_scenarios": [
+        {
+          "scenario_name": "budget_friendly",
+          "description": "Usage within budget",
+          "estimated_cost_usd": 5.50,
+          "token_usage": 50000,
+          "expected_pass": true,
+          "expected_alert": false
+        },
+        {
+          "scenario_name": "over_budget",
+          "description": "Exceeding cost limits",
+          "estimated_cost_usd": 15.75,
+          "token_usage": 150000,
+          "expected_pass": false,
+          "expected_alert": true
+        }
+      ]
+    }
+  ],
+  "token_usage_tests": [
+    {
+      "usage_type": "input_tokens",
+      "description": "Input token consumption monitoring",
+      "threshold": 100000,
+      "test_scenarios": [
+        {
+          "scenario_name": "normal_input",
+          "description": "Normal input token usage",
+          "token_count": 75000,
+          "expected_pass": true
+        },
+        {
+          "scenario_name": "high_input",
+          "description": "High input token usage",
+          "token_count": 120000,
+          "expected_pass": false
+        }
+      ]
+    }
+  ],
+  "provider_limits": {
+    "openai": {
+      "requests_per_minute": 3500,
+      "tokens_per_minute": 90000,
+      "requests_per_day": 10000
+    },
+    "anthropic": {
+      "requests_per_minute": 1000,
+      "tokens_per_minute": 40000,
+      "requests_per_day": 5000
+    },
+    "gemini": {
+      "requests_per_minute": 2000,
+      "tokens_per_minute": 32000,
+      "requests_per_day": 1500
+    }
+  },
+  "custom_scenarios": [
+    {
+      "limit_type": "custom_metric",
+      "description": "Your custom monitoring metric",
+      "threshold": 1000,
+      "test_scenarios": [
+        {
+          "scenario_name": "custom_test",
+          "description": "Your custom test scenario",
+          "metric_value": 800,
+          "expected_pass": true
+        }
+      ]
+    }
+  ]
+}
