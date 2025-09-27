@@ -175,9 +175,15 @@ class WeaviateManager:
         try:
             logger.info(f"Adding {len(chunks)} chunks to Weaviate")
             
+            # Ensure collection is initialized
             if not self.collection:
-                logger.error("Collection not initialized. Call create_schema() first.")
-                return False
+                logger.warning("Collection not initialized. Attempting to create schema...")
+                if not self.create_schema():
+                    logger.error("Failed to create schema during chunk addition")
+                    return False
+                
+                # Wait a moment for schema to be ready
+                time.sleep(2)
             
             # Prepare data for batch insert
             objects = []
