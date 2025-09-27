@@ -76,7 +76,7 @@ async def lifespan(app: FastAPI):
     try:
         # Initialize RAG pipeline
         rag_pipeline = RAGPipeline(
-            prefer_weaviate=False,  # Use mock store for demo
+            prefer_weaviate=True,  # Use Weaviate for production
             openai_api_key=os.getenv("OPENAI_API_KEY")
         )
         
