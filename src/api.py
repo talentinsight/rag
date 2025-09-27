@@ -10,7 +10,7 @@ import os
 import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -280,6 +280,65 @@ async def search_chunks(
     except Exception as e:
         logger.error(f"Search failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+# WebSocket MCP endpoint
+@app.websocket("/mcp")
+async def websocket_mcp_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for MCP (Model Context Protocol)"""
+    await websocket.accept()
+    logger.info(f"MCP WebSocket client connected: {websocket.client}")
+    
+    try:
+        # Import and initialize WebSocket MCP server
+        from mcp_websocket_server import WebSocketMCPServer
+        
+        # Create MCP server instance
+        mcp_server = WebSocketMCPServer()
+        await mcp_server.initialize_rag()
+        
+        while True:
+            # Receive message from client
+            message = await websocket.receive_text()
+            
+            try:
+                # Parse and handle MCP message
+                import json
+                data = json.loads(message)
+                logger.info(f"Received MCP message: {data.get('method', 'unknown')}")
+                
+                # Handle MCP protocol
+                response = await mcp_server.handle_mcp_message(data)
+                
+                # Send response
+                if response:
+                    await websocket.send_text(json.dumps(response))
+                    
+            except json.JSONDecodeError:
+                error_response = {
+                    "jsonrpc": "2.0",
+                    "error": {
+                        "code": -32700,
+                        "message": "Parse error"
+                    }
+                }
+                await websocket.send_text(json.dumps(error_response))
+                
+            except Exception as e:
+                logger.error(f"Error handling MCP message: {str(e)}")
+                error_response = {
+                    "jsonrpc": "2.0",
+                    "error": {
+                        "code": -32603,
+                        "message": f"Internal error: {str(e)}"
+                    }
+                }
+                await websocket.send_text(json.dumps(error_response))
+                
+    except WebSocketDisconnect:
+        logger.info(f"MCP WebSocket client disconnected: {websocket.client}")
+    except Exception as e:
+        logger.error(f"WebSocket MCP error: {str(e)}")
 
 
 # Error handlers

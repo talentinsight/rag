@@ -9,7 +9,9 @@ A complete Retrieval-Augmented Generation (RAG) system for querying the "Attenti
 - **OpenAI Integration**: GPT-4 Turbo for response generation and embeddings
 - **FastAPI REST API**: Production-ready web service
 - **MCP Support**: Model Context Protocol integration for AI assistants
-- **AWS Deployment**: Cloud deployment configuration
+  - **Local MCP**: stdio protocol for Claude Desktop
+  - **WebSocket MCP**: Cloud-ready WebSocket protocol for testing tools
+- **AWS Deployment**: Cloud deployment configuration with auto-scaling
 
 ## 📋 Requirements
 
@@ -87,14 +89,31 @@ python test_api.py
 
 ### 4. Use with MCP (Model Context Protocol)
 
-For AI assistants like Claude Desktop:
+#### For AI assistants like Claude Desktop (Local):
 
 ```bash
-# Start the MCP server
+# Start the local MCP server
 python start_mcp_server.py
 ```
 
 Then configure your MCP client (see [MCP_SETUP.md](MCP_SETUP.md) for details).
+
+#### For Testing Tools and External Integrations (WebSocket):
+
+The main API server includes WebSocket MCP support at `/mcp` endpoint:
+
+```bash
+# WebSocket MCP is available at:
+# Local: ws://localhost:8000/mcp
+# AWS: wss://54.91.86.239/mcp
+```
+
+**MCP WebSocket URL for your testing tool:**
+```
+wss://54.91.86.239/mcp
+```
+
+**Authentication:** No bearer token needed for MCP - uses OpenAI API key internally.
 
 ## 📚 API Endpoints
 
@@ -107,8 +126,14 @@ Then configure your MCP client (see [MCP_SETUP.md](MCP_SETUP.md) for details).
 - `POST /search` - Search chunks without AI generation
 - `GET /chunks/{chunk_id}` - Get specific chunk by ID
 
-### Query Example
+### MCP Endpoints
 
+- `WS /mcp` - WebSocket MCP endpoint for testing tools and external integrations
+- **Local MCP**: Use `python start_mcp_server.py` for Claude Desktop integration
+
+### Query Examples
+
+#### REST API Query
 ```bash
 curl -X POST "http://localhost:8000/query" \\
   -H "Content-Type: application/json" \\
@@ -117,6 +142,35 @@ curl -X POST "http://localhost:8000/query" \\
     "num_chunks": 5,
     "min_score": 0.1
   }'
+```
+
+#### AWS Production Query
+```bash
+curl -X POST "https://54.91.86.239/query" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer 142c5738204c9ae01e39084e177a5bf67ade8578f793" \\
+  -d '{
+    "question": "What is the Transformer architecture?",
+    "num_chunks": 5,
+    "min_score": 0.1
+  }'
+```
+
+#### WebSocket MCP Connection
+```javascript
+// For testing tools and external integrations
+const ws = new WebSocket('wss://54.91.86.239/mcp');
+ws.send(JSON.stringify({
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "query_attention_paper",
+    "arguments": {
+      "question": "What is the Transformer architecture?"
+    }
+  }
+}));
 ```
 
 ### Response Format
@@ -206,8 +260,9 @@ rag/
 │   ├── vector_store_manager.py  # Unified vector store interface
 │   ├── openai_client.py         # OpenAI API integration
 │   ├── rag_pipeline.py          # Complete RAG pipeline
-│   ├── api.py                   # FastAPI application
-│   └── mcp_server.py            # MCP server for AI assistants
+│   ├── api.py                   # FastAPI application with WebSocket MCP
+│   ├── mcp_server.py            # Local MCP server for Claude Desktop
+│   └── mcp_websocket_server.py  # WebSocket MCP server for testing tools
 ├── AttentionAllYouNeed.pdf      # Source document
 ├── requirements.txt             # Python dependencies
 ├── docker-compose.yml           # Weaviate setup
