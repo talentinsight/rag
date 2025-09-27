@@ -43,6 +43,8 @@ jobs:
           requirements.txt \
           README.md \
           nginx-configs/ \
+          docker-compose.yml \
+          AttentionAllYouNeed.pdf \
           --exclude='src/__pycache__' \
           --exclude='*.pyc'
         
@@ -70,6 +72,24 @@ jobs:
         # Update environment
         source rag_env_38/bin/activate
         pip install -r requirements.txt --upgrade
+        
+        # Install Docker if not present
+        if ! command -v docker &> /dev/null; then
+          sudo yum update -y
+          sudo yum install -y docker
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          sudo usermod -a -G docker ec2-user
+        fi
+        
+        # Install Docker Compose if not present
+        if ! command -v docker-compose &> /dev/null; then
+          sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+        fi
+        
+        # Start Weaviate
+        sudo docker-compose up -d || echo "Weaviate start failed, using mock store"
         
         # Restart service
         sudo systemctl restart rag-app

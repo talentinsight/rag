@@ -84,7 +84,7 @@ async def lifespan(app: FastAPI):
             logger.info("✅ RAG pipeline initialized")
             
             # Load the Attention paper
-            pdf_path = "/Users/sam/Desktop/rag/AttentionAllYouNeed.pdf"
+            pdf_path = os.getenv("PDF_PATH", "./AttentionAllYouNeed.pdf")
             if os.path.exists(pdf_path):
                 if await asyncio.get_event_loop().run_in_executor(None, rag_pipeline.load_document, pdf_path):
                     logger.info("✅ Document loaded successfully")
