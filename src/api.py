@@ -286,8 +286,30 @@ async def search_chunks(
 @app.websocket("/mcp")
 async def websocket_mcp_endpoint(websocket: WebSocket):
     """WebSocket endpoint for MCP (Model Context Protocol)"""
+    
+    # Check for bearer token in query parameters or headers
+    token = None
+    
+    # Try to get token from query parameters
+    if "token" in websocket.query_params:
+        token = websocket.query_params["token"]
+    
+    # Try to get token from headers (if available)
+    elif "authorization" in websocket.headers:
+        auth_header = websocket.headers["authorization"]
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+    
+    # Validate token
+    expected_token = os.getenv("BEARER_TOKEN", "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0")
+    
+    if not token or token != expected_token:
+        logger.warning(f"MCP WebSocket authentication failed from {websocket.client}")
+        await websocket.close(code=4001, reason="Authentication required")
+        return
+    
     await websocket.accept()
-    logger.info(f"MCP WebSocket client connected: {websocket.client}")
+    logger.info(f"MCP WebSocket client authenticated and connected: {websocket.client}")
     
     try:
         # Import and initialize WebSocket MCP server

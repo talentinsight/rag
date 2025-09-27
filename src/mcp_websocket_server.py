@@ -63,8 +63,42 @@ class WebSocketMCPServer:
     async def handle_client(self, websocket: WebSocketServerProtocol, path: str):
         """Handle WebSocket client connection"""
         client_id = f"{websocket.remote_address[0]}:{websocket.remote_address[1]}"
-        logger.info(f"New MCP client connected: {client_id}")
         
+        # Check for authentication in the first message or connection headers
+        try:
+            # Wait for first message which should contain auth
+            first_message = await asyncio.wait_for(websocket.recv(), timeout=10.0)
+            data = json.loads(first_message)
+            
+            # Check if it's an auth message or has token
+            token = None
+            if data.get("method") == "authenticate":
+                token = data.get("params", {}).get("token")
+            elif "token" in data:
+                token = data["token"]
+            
+            # Validate token
+            expected_token = os.getenv("BEARER_TOKEN", "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0")
+            
+            if not token or token != expected_token:
+                logger.warning(f"MCP WebSocket authentication failed from {client_id}")
+                await websocket.close(code=4001, reason="Authentication required")
+                return
+            
+            # Send auth success response
+            auth_response = {
+                "jsonrpc": "2.0",
+                "id": data.get("id"),
+                "result": {"authenticated": True}
+            }
+            await websocket.send(json.dumps(auth_response))
+            
+        except (asyncio.TimeoutError, json.JSONDecodeError, KeyError):
+            logger.warning(f"MCP WebSocket authentication timeout or invalid format from {client_id}")
+            await websocket.close(code=4001, reason="Authentication required")
+            return
+        
+        logger.info(f"MCP client authenticated and connected: {client_id}")
         self.clients.add(websocket)
         
         try:

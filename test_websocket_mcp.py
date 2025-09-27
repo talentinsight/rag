@@ -25,7 +25,24 @@ async def test_websocket_mcp():
         async with websockets.connect(uri) as websocket:
             logger.info("✅ Connected to WebSocket MCP server")
             
-            # Test 1: Initialize
+            # Test 1: Authenticate first
+            auth_message = {
+                "jsonrpc": "2.0",
+                "id": 0,
+                "method": "authenticate",
+                "params": {
+                    "token": "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0"
+                }
+            }
+            
+            logger.info("📤 Sending authentication message...")
+            await websocket.send(json.dumps(auth_message))
+            
+            auth_response = await websocket.recv()
+            auth_result = json.loads(auth_response)
+            logger.info(f"📥 Auth response: {auth_result.get('result', {}).get('authenticated', False)}")
+            
+            # Test 2: Initialize
             init_message = {
                 "jsonrpc": "2.0",
                 "id": 1,

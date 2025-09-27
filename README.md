@@ -113,7 +113,9 @@ The main API server includes WebSocket MCP support at `/mcp` endpoint:
 wss://54.91.86.239/mcp
 ```
 
-**Authentication:** No bearer token needed for MCP - uses OpenAI API key internally.
+**Authentication:** Bearer token required for MCP WebSocket connection.
+- **Token:** `142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0`
+- **Method:** Send authenticate message first, then use MCP tools
 
 ## 📚 API Endpoints
 
@@ -160,6 +162,18 @@ curl -X POST "https://54.91.86.239/query" \\
 ```javascript
 // For testing tools and external integrations
 const ws = new WebSocket('wss://54.91.86.239/mcp');
+
+// First authenticate
+ws.send(JSON.stringify({
+  "jsonrpc": "2.0",
+  "id": 0,
+  "method": "authenticate",
+  "params": {
+    "token": "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0"
+  }
+}));
+
+// Then use MCP tools
 ws.send(JSON.stringify({
   "jsonrpc": "2.0",
   "id": 1,
