@@ -33,6 +33,8 @@ rag_pipeline: Optional[RAGPipeline] = None
 class QueryRequest(BaseModel):
     """Request model for queries"""
     question: str = Field(..., description="The question to ask about the Attention paper")
+    external_context: Optional[List[str]] = Field(default=None, description="Optional external context/passages to use")
+    use_retrieval: bool = Field(default=True, description="Whether to use vector retrieval (true=hybrid, false=context-only)")
     num_chunks: int = Field(default=5, ge=1, le=20, description="Number of chunks to retrieve")
     min_score: float = Field(default=0.1, ge=0.0, le=1.0, description="Minimum similarity score")
 
@@ -43,6 +45,7 @@ class QueryResponse(BaseModel):
     question: str = Field(..., description="Original question")
     chunks_found: int = Field(..., description="Number of relevant chunks found")
     sources: List[Dict[str, Any]] = Field(default=[], description="Source chunks used")
+    context_sources: Optional[Dict[str, int]] = Field(None, description="Breakdown of context sources (external vs retrieved)")
     model: Optional[str] = Field(None, description="Model used for generation")
     total_tokens: Optional[int] = Field(None, description="Total tokens used")
     processing_time_ms: Optional[float] = Field(None, description="Processing time in milliseconds")
@@ -197,13 +200,15 @@ async def query_rag(
     try:
         logger.info(f"Processing query: '{request.question[:50]}...'")
         
-        # Process query
+        # Process query with hybrid context support
         result = await asyncio.get_event_loop().run_in_executor(
             None,
             pipeline.query,
             request.question,
             request.num_chunks,
-            request.min_score
+            request.min_score,
+            request.external_context,
+            request.use_retrieval
         )
         
         # Calculate processing time
@@ -215,6 +220,7 @@ async def query_rag(
             question=result.get("question", request.question),
             chunks_found=result.get("chunks_found", 0),
             sources=result.get("sources", []),
+            context_sources=result.get("context_sources"),
             model=result.get("model"),
             total_tokens=result.get("total_tokens"),
             processing_time_ms=processing_time

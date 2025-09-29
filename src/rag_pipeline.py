@@ -139,14 +139,18 @@ class RAGPipeline:
     def query(self, 
               question: str, 
               num_chunks: int = 5,
-              min_score: float = 0.1) -> Dict[str, Any]:
+              min_score: float = 0.1,
+              external_context: Optional[List[str]] = None,
+              use_retrieval: bool = True) -> Dict[str, Any]:
         """
-        Query the RAG system
+        Query the RAG system with hybrid context support
         
         Args:
             question (str): User question
             num_chunks (int): Number of chunks to retrieve
             min_score (float): Minimum similarity score
+            external_context (List[str], optional): External passages to use as context
+            use_retrieval (bool): Whether to use vector retrieval (hybrid mode)
             
         Returns:
             Dict: Response with answer and metadata
@@ -161,46 +165,81 @@ class RAGPipeline:
             
             logger.info(f"Processing query: '{question[:50]}...'")
             
-            # Retrieve relevant chunks
-            relevant_chunks = self.vector_store.search_similar(
-                query=question,
-                limit=num_chunks,
-                min_score=min_score
-            )
+            # Determine context sources
+            retrieved_chunks = []
+            external_chunks = []
             
-            if not relevant_chunks:
+            # Handle external context
+            if external_context:
+                logger.info(f"Using {len(external_context)} external context passages")
+                external_chunks = [
+                    {
+                        "chunk_id": f"external_{i}",
+                        "content": passage,
+                        "section_title": "External Context",
+                        "score": 1.0  # Max score for external context
+                    }
+                    for i, passage in enumerate(external_context)
+                ]
+            
+            # Handle retrieval
+            if use_retrieval and self.vector_store:
+                logger.info("Performing vector retrieval...")
+                retrieved_chunks = self.vector_store.search_similar(
+                    query=question,
+                    limit=num_chunks,
+                    min_score=min_score
+                )
+                logger.info(f"Retrieved {len(retrieved_chunks)} chunks from vector store")
+            
+            # Combine contexts
+            all_chunks = external_chunks + retrieved_chunks
+            
+            if not all_chunks:
                 return {
-                    "answer": "I couldn't find any relevant information in the document to answer your question.",
+                    "answer": "I couldn't find any relevant information to answer your question. Please provide external context or ensure the document is loaded.",
                     "question": question,
                     "chunks_found": 0,
-                    "sources": []
+                    "sources": [],
+                    "context_sources": {
+                        "external_passages": len(external_chunks),
+                        "retrieved_chunks": len(retrieved_chunks)
+                    }
                 }
             
-            logger.info(f"Retrieved {len(relevant_chunks)} relevant chunks")
+            logger.info(f"Total context: {len(external_chunks)} external + {len(retrieved_chunks)} retrieved = {len(all_chunks)} chunks")
             
             # Generate response using OpenAI (if available)
             if self.openai_client:
-                response = self.openai_client.generate_response(question, relevant_chunks)
-                response["chunks_found"] = len(relevant_chunks)
+                response = self.openai_client.generate_response(question, all_chunks)
+                response["chunks_found"] = len(all_chunks)
+                response["context_sources"] = {
+                    "external_passages": len(external_chunks),
+                    "retrieved_chunks": len(retrieved_chunks)
+                }
                 return response
             else:
                 # Fallback: return chunks without AI generation
                 context = "\\n\\n".join([
                     f"[Chunk {i+1}] (Section: {chunk.get('section_title', 'Unknown')}, Score: {chunk.get('score', 0):.3f})\\n{chunk.get('content', '')}"
-                    for i, chunk in enumerate(relevant_chunks)
+                    for i, chunk in enumerate(all_chunks)
                 ])
                 
                 return {
-                    "answer": f"Based on the retrieved context:\\n\\n{context}\\n\\nNote: AI response generation is not available. Please provide an OpenAI API key for enhanced responses.",
+                    "answer": f"Based on the combined context:\\n\\n{context}\\n\\nNote: AI response generation is not available. Please provide an OpenAI API key for enhanced responses.",
                     "question": question,
-                    "chunks_found": len(relevant_chunks),
+                    "chunks_found": len(all_chunks),
+                    "context_sources": {
+                        "external_passages": len(external_chunks),
+                        "retrieved_chunks": len(retrieved_chunks)
+                    },
                     "sources": [
                         {
                             "chunk_id": chunk.get("chunk_id", ""),
                             "section": chunk.get("section_title", ""),
                             "score": chunk.get("score", 0.0)
                         }
-                        for chunk in relevant_chunks
+                        for chunk in all_chunks
                     ]
                 }
             

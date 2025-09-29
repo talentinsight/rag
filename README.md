@@ -4,10 +4,14 @@ A complete Retrieval-Augmented Generation (RAG) system for querying the "Attenti
 
 ## 🚀 Features
 
+- **Hybrid RAG System**: Flexible context handling for testing and production
+  - **Normal RAG**: Traditional retrieval from document database
+  - **External Context Mode**: Use provided passages without retrieval
+  - **Hybrid Mode**: Combine external context with retrieved chunks
 - **Semantic Text Chunking**: Intelligent document splitting with overlap
 - **Vector Database**: Weaviate integration with fallback to TF-IDF mock store
 - **OpenAI Integration**: GPT-4 Turbo for response generation and embeddings
-- **FastAPI REST API**: Production-ready web service
+- **FastAPI REST API**: Production-ready web service with context source tracking
 - **MCP Support**: Model Context Protocol integration for AI assistants
   - **Local MCP**: stdio protocol for Claude Desktop
   - **WebSocket MCP**: Cloud-ready WebSocket protocol for testing tools
@@ -135,7 +139,7 @@ wss://54.91.86.239/mcp
 
 ### Query Examples
 
-#### REST API Query
+#### REST API Query (Normal RAG)
 ```bash
 curl -X POST "http://localhost:8000/query" \\
   -H "Content-Type: application/json" \\
@@ -146,11 +150,34 @@ curl -X POST "http://localhost:8000/query" \\
   }'
 ```
 
+#### External Context Only (Test Mode)
+```bash
+curl -X POST "http://localhost:8000/query" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "question": "What is attention?",
+    "external_context": ["Attention is a cognitive mechanism..."],
+    "use_retrieval": false
+  }'
+```
+
+#### Hybrid Mode (External + Retrieved)
+```bash
+curl -X POST "http://localhost:8000/query" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "question": "What is attention?",
+    "external_context": ["Test context passage..."],
+    "use_retrieval": true,
+    "num_chunks": 3
+  }'
+```
+
 #### AWS Production Query
 ```bash
 curl -X POST "https://54.91.86.239/query" \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer 142c5738204c9ae01e39084e177a5bf67ade8578f793" \\
+  -H "Authorization: Bearer 142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0" \\
   -d '{
     "question": "What is the Transformer architecture?",
     "num_chunks": 5,
@@ -205,6 +232,36 @@ ws.send(JSON.stringify({
   "total_tokens": 1250,
   "processing_time_ms": 1500.5,
   "timestamp": "2024-01-01T12:00:00"
+}
+```
+
+### Response Format
+
+All query responses include context source tracking:
+
+```json
+{
+  "answer": "Generated response based on context...",
+  "question": "What is attention?",
+  "chunks_found": 3,
+  "sources": [
+    {
+      "chunk_id": "external_0",
+      "section": "External Context", 
+      "score": 1.0
+    },
+    {
+      "chunk_id": "chunk_123",
+      "section": "3.2 Attention",
+      "score": 0.85
+    }
+  ],
+  "context_sources": {
+    "external_passages": 1,
+    "retrieved_chunks": 2
+  },
+  "processing_time_ms": 45.2,
+  "timestamp": "2025-09-29T12:00:00Z"
 }
 ```
 
