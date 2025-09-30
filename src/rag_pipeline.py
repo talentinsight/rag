@@ -237,7 +237,8 @@ class RAGPipeline:
                         {
                             "chunk_id": chunk.get("chunk_id", ""),
                             "section": chunk.get("section_title", ""),
-                            "score": chunk.get("score", 0.0)
+                            "score": chunk.get("score", 0.0),
+                            "content": chunk.get("content", "")
                         }
                         for chunk in all_chunks
                     ]

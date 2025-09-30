@@ -27,6 +27,13 @@ class WebSocketMCPServer:
         self.port = port
         self.rag_pipeline: Optional[RAGPipeline] = None
         self.clients: set = set()
+        self.conversation_history = []
+        self.session_stats = {
+            "queries_count": 0,
+            "total_chunks_retrieved": 0,
+            "total_tokens_used": 0,
+            "session_start": datetime.now().isoformat()
+        }
         
     async def initialize_rag(self):
         """Initialize the RAG pipeline"""
@@ -258,6 +265,64 @@ class WebSocketMCPServer:
                     "properties": {},
                     "required": []
                 }
+            },
+            {
+                "name": "analyze_query_complexity",
+                "description": "Analyze the complexity and requirements of a query before processing",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "The question to analyze"
+                        }
+                    },
+                    "required": ["question"]
+                }
+            },
+            {
+                "name": "get_chunk_details",
+                "description": "Get detailed information about a specific chunk",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "chunk_id": {
+                            "type": "string",
+                            "description": "The ID of the chunk to retrieve"
+                        }
+                    },
+                    "required": ["chunk_id"]
+                }
+            },
+            {
+                "name": "compare_chunks",
+                "description": "Compare similarity between multiple chunks",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "chunk_ids": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of chunk IDs to compare"
+                        }
+                    },
+                    "required": ["chunk_ids"]
+                }
+            },
+            {
+                "name": "get_conversation_history",
+                "description": "Get the history of queries and responses in this session",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "limit": {
+                            "type": "integer",
+                            "description": "Maximum number of entries to return",
+                            "default": 10
+                        }
+                    },
+                    "required": []
+                }
             }
         ]
         
@@ -292,6 +357,14 @@ class WebSocketMCPServer:
                 result = await self.handle_search_chunks(arguments)
             elif tool_name == "get_rag_stats":
                 result = await self.handle_get_stats(arguments)
+            elif tool_name == "analyze_query_complexity":
+                result = await self.handle_analyze_query_complexity(arguments)
+            elif tool_name == "get_chunk_details":
+                result = await self.handle_get_chunk_details(arguments)
+            elif tool_name == "compare_chunks":
+                result = await self.handle_compare_chunks(arguments)
+            elif tool_name == "get_conversation_history":
+                result = await self.handle_get_conversation_history(arguments)
             else:
                 return {
                     "jsonrpc": "2.0",
@@ -340,6 +413,21 @@ class WebSocketMCPServer:
         # Execute query
         result = self.rag_pipeline.query(question, num_chunks, min_score)
         
+        # Update session stats
+        self.session_stats["queries_count"] += 1
+        self.session_stats["total_chunks_retrieved"] += result.get("chunks_found", 0)
+        self.session_stats["total_tokens_used"] += result.get("total_tokens", 0)
+        
+        # Add to conversation history
+        self.conversation_history.append({
+            "timestamp": datetime.now().isoformat(),
+            "type": "query",
+            "question": question,
+            "answer": result.get("answer", ""),
+            "chunks_found": result.get("chunks_found", 0),
+            "tokens_used": result.get("total_tokens", 0)
+        })
+        
         # Format response
         response_parts = []
         response_parts.append(f"**Answer:** {result.get('answer', 'No answer generated')}")
@@ -351,14 +439,220 @@ class WebSocketMCPServer:
         if result.get('total_tokens'):
             response_parts.append(f"**Tokens Used:** {result['total_tokens']}")
         
-        # Sources
+        # Sources with full content
         sources = result.get('sources', [])
         if sources:
             response_parts.append("**Sources:**")
             for i, source in enumerate(sources, 1):
-                response_parts.append(f"{i}. {source.get('chunk_id', 'Unknown')} (Score: {source.get('score', 0):.3f})")
+                chunk_id = source.get('chunk_id', 'Unknown')
+                section = source.get('section', 'Unknown')
+                score = source.get('score', 0)
+                content = source.get('content', '')
+                
+                response_parts.append(f"{i}. **{chunk_id}** (Section: {section}, Score: {score:.3f})")
+                if content:
+                    response_parts.append(f"   Content: {content[:200]}..." if len(content) > 200 else f"   Content: {content}")
+        
+        # Add LLM Prompt details if available
+        if result.get('llm_prompt'):
+            response_parts.append("\\n**LLM Prompt Details:**")
+            llm_prompt = result.get('llm_prompt', {})
+            if llm_prompt.get('system_prompt'):
+                response_parts.append(f"System Prompt: {llm_prompt['system_prompt'][:100]}...")
+            if llm_prompt.get('user_prompt'):
+                response_parts.append(f"User Prompt: {llm_prompt['user_prompt'][:200]}...")
         
         return "\n".join(response_parts)
+    
+    async def handle_analyze_query_complexity(self, arguments: Dict[str, Any]) -> str:
+        """Analyze query complexity and suggest optimization"""
+        question = arguments.get("question", "")
+        
+        if not question:
+            return "❌ Please provide a question to analyze."
+        
+        # Analyze query characteristics
+        word_count = len(question.split())
+        char_count = len(question)
+        has_technical_terms = any(term in question.lower() for term in 
+                                ['attention', 'transformer', 'neural', 'model', 'architecture', 'mechanism'])
+        has_multiple_questions = '?' in question[:-1]  # Multiple question marks
+        
+        complexity_score = 0
+        if word_count > 15: complexity_score += 2
+        if char_count > 100: complexity_score += 1
+        if has_technical_terms: complexity_score += 2
+        if has_multiple_questions: complexity_score += 3
+        
+        complexity_level = "Low" if complexity_score <= 2 else "Medium" if complexity_score <= 5 else "High"
+        
+        # Suggest parameters
+        suggested_chunks = 3 if complexity_score <= 2 else 5 if complexity_score <= 5 else 8
+        suggested_min_score = 0.2 if complexity_score <= 2 else 0.1 if complexity_score <= 5 else 0.05
+        
+        analysis = [
+            f"**Query Analysis:**",
+            f"Question: {question}",
+            f"Word Count: {word_count}",
+            f"Character Count: {char_count}",
+            f"Technical Terms: {'Yes' if has_technical_terms else 'No'}",
+            f"Multiple Questions: {'Yes' if has_multiple_questions else 'No'}",
+            f"",
+            f"**Complexity Assessment:**",
+            f"Complexity Level: {complexity_level}",
+            f"Complexity Score: {complexity_score}/8",
+            f"",
+            f"**Recommended Parameters:**",
+            f"Suggested Chunks: {suggested_chunks}",
+            f"Suggested Min Score: {suggested_min_score}",
+            f"",
+            f"**Optimization Tips:**",
+        ]
+        
+        if complexity_score <= 2:
+            analysis.append("- Simple query, fewer chunks should be sufficient")
+        elif complexity_score <= 5:
+            analysis.append("- Moderate complexity, standard parameters recommended")
+        else:
+            analysis.append("- Complex query, consider using more chunks and lower threshold")
+            analysis.append("- May benefit from breaking into sub-questions")
+        
+        return "\n".join(analysis)
+    
+    async def handle_get_chunk_details(self, arguments: Dict[str, Any]) -> str:
+        """Get detailed information about a specific chunk"""
+        chunk_id = arguments.get("chunk_id", "")
+        
+        if not chunk_id:
+            return "❌ Please provide a chunk_id."
+        
+        # Search for the chunk in vector store
+        try:
+            # This is a simplified version - in real implementation, 
+            # you'd query the vector store directly
+            search_results = self.rag_pipeline.vector_store_manager.search_similar(
+                chunk_id, limit=20, min_score=0.0
+            )
+            
+            target_chunk = None
+            for chunk in search_results:
+                if chunk.get("chunk_id") == chunk_id:
+                    target_chunk = chunk
+                    break
+            
+            if not target_chunk:
+                return f"❌ Chunk '{chunk_id}' not found."
+            
+            details = [
+                f"**Chunk Details:**",
+                f"ID: {target_chunk.get('chunk_id', 'Unknown')}",
+                f"Section: {target_chunk.get('section_title', 'Unknown')}",
+                f"Type: {target_chunk.get('chunk_type', 'Unknown')}",
+                f"Token Count: {target_chunk.get('token_count', 0)}",
+                f"Character Range: {target_chunk.get('start_char', 0)}-{target_chunk.get('end_char', 0)}",
+                f"Source File: {target_chunk.get('source_file', 'Unknown')}",
+                f"",
+                f"**Content:**",
+                f"{target_chunk.get('content', 'No content available')}"
+            ]
+            
+            return "\n".join(details)
+            
+        except Exception as e:
+            return f"❌ Error retrieving chunk details: {str(e)}"
+    
+    async def handle_compare_chunks(self, arguments: Dict[str, Any]) -> str:
+        """Compare similarity between multiple chunks"""
+        chunk_ids = arguments.get("chunk_ids", [])
+        
+        if not chunk_ids or len(chunk_ids) < 2:
+            return "❌ Please provide at least 2 chunk IDs to compare."
+        
+        if len(chunk_ids) > 5:
+            return "❌ Maximum 5 chunks can be compared at once."
+        
+        try:
+            # Get chunk details
+            chunks = []
+            for chunk_id in chunk_ids:
+                search_results = self.rag_pipeline.vector_store_manager.search_similar(
+                    chunk_id, limit=20, min_score=0.0
+                )
+                
+                target_chunk = None
+                for chunk in search_results:
+                    if chunk.get("chunk_id") == chunk_id:
+                        target_chunk = chunk
+                        break
+                
+                if target_chunk:
+                    chunks.append(target_chunk)
+                else:
+                    return f"❌ Chunk '{chunk_id}' not found."
+            
+            comparison = [
+                f"**Chunk Comparison:**",
+                f"Comparing {len(chunks)} chunks:",
+                ""
+            ]
+            
+            # Basic comparison metrics
+            for i, chunk in enumerate(chunks, 1):
+                comparison.extend([
+                    f"**Chunk {i}: {chunk.get('chunk_id')}**",
+                    f"Section: {chunk.get('section_title', 'Unknown')}",
+                    f"Token Count: {chunk.get('token_count', 0)}",
+                    f"Content Preview: {chunk.get('content', '')[:100]}...",
+                    ""
+                ])
+            
+            # Simple similarity analysis
+            comparison.extend([
+                "**Similarity Analysis:**",
+                "- All chunks are from the same document (Attention Is All You Need)",
+                f"- Token count range: {min(c.get('token_count', 0) for c in chunks)} - {max(c.get('token_count', 0) for c in chunks)}",
+                f"- Sections covered: {', '.join(set(c.get('section_title', 'Unknown') for c in chunks))}",
+            ])
+            
+            return "\n".join(comparison)
+            
+        except Exception as e:
+            return f"❌ Error comparing chunks: {str(e)}"
+    
+    async def handle_get_conversation_history(self, arguments: Dict[str, Any]) -> str:
+        """Get conversation history for this session"""
+        limit = arguments.get("limit", 10)
+        
+        if not self.conversation_history:
+            return "📝 No conversation history available for this session."
+        
+        # Get recent entries
+        recent_history = self.conversation_history[-limit:] if limit > 0 else self.conversation_history
+        
+        history_parts = [
+            f"**Conversation History (Last {len(recent_history)} entries):**",
+            f"Session started: {self.session_stats['session_start']}",
+            ""
+        ]
+        
+        for i, entry in enumerate(recent_history, 1):
+            history_parts.extend([
+                f"**Query {i}** ({entry['timestamp']}):",
+                f"Question: {entry['question']}",
+                f"Answer: {entry['answer'][:150]}..." if len(entry['answer']) > 150 else f"Answer: {entry['answer']}",
+                f"Chunks Found: {entry['chunks_found']}",
+                f"Tokens Used: {entry['tokens_used']}",
+                ""
+            ])
+        
+        history_parts.extend([
+            "**Session Statistics:**",
+            f"Total Queries: {self.session_stats['queries_count']}",
+            f"Total Chunks Retrieved: {self.session_stats['total_chunks_retrieved']}",
+            f"Total Tokens Used: {self.session_stats['total_tokens_used']}"
+        ])
+        
+        return "\n".join(history_parts)
     
     async def handle_search_chunks(self, arguments: Dict[str, Any]) -> str:
         """Handle chunk search tool"""

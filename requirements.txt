@@ -34,6 +34,7 @@ boto3>=1.26.0
 # Vector database (optional)
 weaviate-client>=3.15.0
 
-# MCP (optional)
-mcp>=1.0.0
+# MCP (optional) - Model Context Protocol
+# Note: MCP package has build issues, using websockets only for now
+# mcp functionality implemented directly in code
 websockets>=12.0

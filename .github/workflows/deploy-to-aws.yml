@@ -5,6 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:  # Manual trigger
 
 jobs:
   deploy:
@@ -39,25 +40,29 @@ jobs:
       run: |
         echo "=== Creating deployment package ==="
         tar -czf rag-deployment.tar.gz \
+          --exclude='src/__pycache__' \
+          --exclude='*.pyc' \
           src/ \
           requirements.txt \
           README.md \
           nginx-configs/ \
           docker-compose.yml \
-          AttentionAllYouNeed.pdf \
-          --exclude='src/__pycache__' \
-          --exclude='*.pyc'
+          AttentionAllYouNeed.pdf
         
         echo "=== Uploading to EC2 ==="
         # Create SSH key from secret
-        echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/rag-keypair.pem
-        chmod 400 /tmp/rag-keypair.pem
+        echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/rag.pem
+        chmod 600 /tmp/rag.pem
+        
+        # Debug key format
+        echo "Key file size: $(wc -c < /tmp/rag.pem)"
+        echo "Key file first line: $(head -1 /tmp/rag.pem)"
         
         # Upload and deploy
-        scp -i /tmp/rag-keypair.pem -o StrictHostKeyChecking=no \
+        scp -i /tmp/rag.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
           rag-deployment.tar.gz ec2-user@${{ secrets.EC2_HOST }}:/tmp/
         
-        ssh -i /tmp/rag-keypair.pem -o StrictHostKeyChecking=no \
+        ssh -i /tmp/rag.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
           ec2-user@${{ secrets.EC2_HOST }} << 'EOSSH'
         
         echo "=== Deploying new version ==="
@@ -127,7 +132,7 @@ jobs:
         EOSSH
         
         # Cleanup
-        rm /tmp/rag-keypair.pem
+        rm /tmp/rag.pem
         
     - name: Notify deployment status
       run: |

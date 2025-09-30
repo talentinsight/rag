@@ -104,11 +104,16 @@ class OpenAIClient:
                 "total_tokens": response.usage.total_tokens,
                 "prompt_tokens": response.usage.prompt_tokens,
                 "completion_tokens": response.usage.completion_tokens,
+                "llm_prompt": {
+                    "system_prompt": system_prompt,
+                    "user_prompt": user_prompt
+                },
                 "sources": [
                     {
                         "chunk_id": chunk.get("chunk_id", ""),
                         "section": chunk.get("section_title", ""),
-                        "score": chunk.get("score", 0.0)
+                        "score": chunk.get("score", 0.0),
+                        "content": chunk.get("content", "")
                     }
                     for chunk in context_chunks
                 ]

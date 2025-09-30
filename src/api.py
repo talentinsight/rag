@@ -19,6 +19,14 @@ from dotenv import load_dotenv
 
 from rag_pipeline import RAGPipeline
 
+# MCP WebSocket server import - conditional for deployment
+try:
+    from mcp_websocket_server import WebSocketMCPServer
+    MCP_AVAILABLE = True
+except ImportError:
+    MCP_AVAILABLE = False
+    logger.warning("MCP WebSocket server not available")
+
 # Load environment variables
 load_dotenv()
 
@@ -319,7 +327,9 @@ async def websocket_mcp_endpoint(websocket: WebSocket):
     
     try:
         # Import and initialize WebSocket MCP server
-        from mcp_websocket_server import WebSocketMCPServer
+        if not MCP_AVAILABLE:
+            await websocket.send_text(json.dumps({"error": "MCP server not available"}))
+            return
         
         # Create MCP server instance
         mcp_server = WebSocketMCPServer()
