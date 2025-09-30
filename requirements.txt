@@ -35,5 +35,6 @@ boto3>=1.26.0
 weaviate-client>=3.15.0
 
 # MCP (optional) - Model Context Protocol
-mcp>=1.0.0
+# Note: MCP package has build issues, using websockets only for now
+# mcp functionality implemented directly in code
 websockets>=12.0
