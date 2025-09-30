@@ -40,14 +40,14 @@ jobs:
       run: |
         echo "=== Creating deployment package ==="
         tar -czf rag-deployment.tar.gz \
+          --exclude='src/__pycache__' \
+          --exclude='*.pyc' \
           src/ \
           requirements.txt \
           README.md \
           nginx-configs/ \
           docker-compose.yml \
-          AttentionAllYouNeed.pdf \
-          --exclude='src/__pycache__' \
-          --exclude='*.pyc'
+          AttentionAllYouNeed.pdf
         
         echo "=== Uploading to EC2 ==="
         # Create SSH key from secret
