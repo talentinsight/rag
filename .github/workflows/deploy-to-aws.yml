@@ -51,18 +51,18 @@ jobs:
         
         echo "=== Uploading to EC2 ==="
         # Create SSH key from secret
-        echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/rag-keypair.pem
-        chmod 600 /tmp/rag-keypair.pem
+        echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/rag.pem
+        chmod 600 /tmp/rag.pem
         
         # Debug key format
-        echo "Key file size: $(wc -c < /tmp/rag-keypair.pem)"
-        echo "Key file first line: $(head -1 /tmp/rag-keypair.pem)"
+        echo "Key file size: $(wc -c < /tmp/rag.pem)"
+        echo "Key file first line: $(head -1 /tmp/rag.pem)"
         
         # Upload and deploy
-        scp -i /tmp/rag-keypair.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        scp -i /tmp/rag.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
           rag-deployment.tar.gz ec2-user@${{ secrets.EC2_HOST }}:/tmp/
         
-        ssh -i /tmp/rag-keypair.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        ssh -i /tmp/rag.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
           ec2-user@${{ secrets.EC2_HOST }} << 'EOSSH'
         
         echo "=== Deploying new version ==="
