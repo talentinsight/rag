@@ -108,7 +108,7 @@ jobs:
         EOSSH
         
         # Cleanup
-        rm /tmp/rag-keypair.pem
+        rm /tmp/rag.pem
         
     - name: Notify deployment status
       run: |
