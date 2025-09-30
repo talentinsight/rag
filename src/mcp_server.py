@@ -244,12 +244,28 @@ class RAGMCPServer:
         if result.get('total_tokens'):
             response_parts.append(f"**Tokens Used:** {result['total_tokens']}")
         
-        # Sources
+        # Sources with full content
         sources = result.get('sources', [])
         if sources:
             response_parts.append("\\n**Sources:**")
             for i, source in enumerate(sources, 1):
-                response_parts.append(f"{i}. {source.get('chunk_id', 'Unknown')} (Section: {source.get('section', 'Unknown')}, Score: {source.get('score', 0):.3f})")
+                chunk_id = source.get('chunk_id', 'Unknown')
+                section = source.get('section', 'Unknown')
+                score = source.get('score', 0)
+                content = source.get('content', '')
+                
+                response_parts.append(f"{i}. **{chunk_id}** (Section: {section}, Score: {score:.3f})")
+                if content:
+                    response_parts.append(f"   Content: {content[:200]}..." if len(content) > 200 else f"   Content: {content}")
+        
+        # Add LLM Prompt details if available
+        if result.get('llm_prompt'):
+            response_parts.append("\\n**LLM Prompt Details:**")
+            llm_prompt = result.get('llm_prompt', {})
+            if llm_prompt.get('system_prompt'):
+                response_parts.append(f"System Prompt: {llm_prompt['system_prompt'][:100]}...")
+            if llm_prompt.get('user_prompt'):
+                response_parts.append(f"User Prompt: {llm_prompt['user_prompt'][:200]}...")
         
         return [types.TextContent(
             type="text",
