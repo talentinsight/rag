@@ -12,12 +12,17 @@ def start_server():
     """Start the FastAPI server"""
     print("🚀 Starting RAG API Server...")
     
-    # Change to src directory
-    src_dir = os.path.join(os.path.dirname(__file__), "src")
-    os.chdir(src_dir)
+    # Change to project root directory
+    project_root = os.path.dirname(__file__)
+    os.chdir(project_root)
     
-    # Get virtual environment python
-    venv_python = os.path.join("..", "rag_env", "bin", "python")
+    # Get virtual environment python and uvicorn
+    venv_python = os.path.join("rag_env", "bin", "python")
+    venv_uvicorn = os.path.join("rag_env", "bin", "uvicorn")
+    
+    # Set PYTHONPATH to include project root
+    env = os.environ.copy()
+    env['PYTHONPATH'] = f"{project_root}:{env.get('PYTHONPATH', '')}"
     
     try:
         # Start the server
@@ -27,8 +32,14 @@ def start_server():
         print("📚 API documentation at: http://localhost:8000/docs")
         print("\\n🔄 Starting server (Ctrl+C to stop)...")
         
-        # Run the API server
-        subprocess.run([venv_python, "api.py"], check=True)
+        # Run the API server with uvicorn
+        subprocess.run([
+            venv_uvicorn, 
+            "src.api:app", 
+            "--host", "0.0.0.0", 
+            "--port", "8000",
+            "--reload"
+        ], check=True, env=env)
         
     except KeyboardInterrupt:
         print("\\n🛑 Server stopped by user")

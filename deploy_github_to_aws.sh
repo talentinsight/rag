@@ -42,7 +42,7 @@ sudo cp -r src src_backup_$(date +%Y%m%d_%H%M%S) 2>/dev/null || echo "No previou
 tar -xzf /tmp/rag-deployment.tar.gz
 
 # Update environment
-source rag_env_38/bin/activate
+source rag_env/bin/activate 2>/dev/null || source rag_env_38/bin/activate
 pip install -r requirements.txt --upgrade
 
 # Restart service
