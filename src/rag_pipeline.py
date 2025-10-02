@@ -91,12 +91,13 @@ class RAGPipeline:
             logger.error(f"Failed to initialize RAG pipeline: {str(e)}")
             return False
     
-    def load_document(self, pdf_path: str) -> bool:
+    def load_document(self, pdf_path: str, clear_existing: bool = True) -> bool:
         """
         Load and process a PDF document into the vector store
         
         Args:
             pdf_path (str): Path to PDF file
+            clear_existing (bool): Whether to clear existing chunks before loading
             
         Returns:
             bool: True if successful
@@ -107,6 +108,24 @@ class RAGPipeline:
                 return False
             
             logger.info(f"Loading document: {pdf_path}")
+            
+            # Clear existing chunks if requested
+            if clear_existing:
+                logger.info("Clearing existing chunks from vector store...")
+                if hasattr(self.vector_store.store, 'delete_collection'):
+                    # For Weaviate: delete and recreate collection
+                    if self.vector_store.store.delete_collection():
+                        logger.info("✅ Deleted existing collection")
+                        # Recreate schema
+                        if not self.vector_store.store.create_schema():
+                            logger.error("Failed to recreate schema")
+                            return False
+                    else:
+                        logger.warning("Failed to delete collection, continuing anyway...")
+                elif hasattr(self.vector_store.store, 'clear'):
+                    # For MockVectorStore: clear data
+                    self.vector_store.store.clear()
+                    logger.info("✅ Cleared existing chunks")
             
             # Process PDF
             pdf_processor = PDFProcessor()
