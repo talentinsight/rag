@@ -17,11 +17,11 @@ from pydantic import BaseModel, Field
 import uvicorn
 from dotenv import load_dotenv
 
-from rag_pipeline import RAGPipeline
+from .rag_pipeline import RAGPipeline
 
 # MCP WebSocket server import - conditional for deployment
 try:
-    from mcp_websocket_server import WebSocketMCPServer
+    from .mcp_websocket_server import WebSocketMCPServer
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
@@ -64,6 +64,24 @@ class HealthResponse(BaseModel):
     pipeline_initialized: bool = Field(..., description="Whether RAG pipeline is initialized")
     openai_available: bool = Field(..., description="Whether OpenAI is available")
     vector_store_stats: Dict[str, Any] = Field(default={}, description="Vector store statistics")
+
+
+class DirectLLMRequest(BaseModel):
+    """Request model for direct LLM queries (without RAG)"""
+    question: str = Field(..., description="The question to ask directly to the LLM")
+    model: str = Field(default="gpt-3.5-turbo", description="OpenAI model to use")
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="Temperature for response generation")
+    max_tokens: int = Field(default=500, ge=1, le=4000, description="Maximum tokens in response")
+
+
+class DirectLLMResponse(BaseModel):
+    """Response model for direct LLM queries"""
+    answer: str = Field(..., description="Generated answer from LLM")
+    question: str = Field(..., description="Original question")
+    model: str = Field(..., description="Model used for generation")
+    total_tokens: Optional[int] = Field(None, description="Total tokens used")
+    processing_time_ms: Optional[float] = Field(None, description="Processing time in milliseconds")
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
 class StatsResponse(BaseModel):
@@ -259,6 +277,48 @@ async def get_chunk(
     except Exception as e:
         logger.error(f"Failed to get chunk {chunk_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get chunk: {str(e)}")
+
+
+@app.post("/direct-llm", response_model=DirectLLMResponse)
+async def direct_llm_query(request: DirectLLMRequest):
+    """
+    Query the LLM directly without RAG (for guardrails testing)
+    """
+    start_time = datetime.now()
+    
+    try:
+        logger.info(f"Processing direct LLM query: '{request.question[:50]}...'")
+        
+        # Import OpenAI client
+        from .openai_client import OpenAIClient
+        
+        # Initialize OpenAI client
+        openai_client = OpenAIClient()
+        
+        # Make direct call to OpenAI
+        response = await asyncio.get_event_loop().run_in_executor(
+            None,
+            openai_client.generate_direct_response,
+            request.question,
+            request.model,
+            request.temperature,
+            request.max_tokens
+        )
+        
+        # Calculate processing time
+        processing_time = (datetime.now() - start_time).total_seconds() * 1000
+        
+        return DirectLLMResponse(
+            answer=response.get("answer", ""),
+            question=request.question,
+            model=request.model,
+            total_tokens=response.get("total_tokens"),
+            processing_time_ms=processing_time
+        )
+        
+    except Exception as e:
+        logger.error(f"Direct LLM query failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Direct LLM query failed: {str(e)}")
 
 
 @app.post("/search")

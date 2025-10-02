@@ -51,6 +51,68 @@ class OpenAIClient:
         
         logger.info(f"Initialized OpenAI client with model: {self.model}")
     
+    def generate_direct_response(self, 
+                                query: str, 
+                                model: str = None,
+                                temperature: float = None,
+                                max_tokens: int = None) -> Dict[str, Any]:
+        """
+        Generate a direct response without RAG context (for guardrails testing)
+        
+        Args:
+            query (str): User query
+            model (str): Model to use (optional, uses instance default)
+            temperature (float): Temperature (optional, uses instance default)
+            max_tokens (int): Max tokens (optional, uses instance default)
+            
+        Returns:
+            Dict: Response with metadata
+        """
+        try:
+            # Use provided parameters or defaults
+            use_model = model or self.model
+            use_temperature = temperature if temperature is not None else self.temperature
+            use_max_tokens = max_tokens or self.max_tokens
+            
+            logger.info(f"Generating direct response for query: '{query[:50]}...'")
+            
+            # Call OpenAI API directly without RAG context
+            response = self.client.chat.completions.create(
+                model=use_model,
+                messages=[
+                    {"role": "user", "content": query}
+                ],
+                temperature=use_temperature,
+                max_tokens=use_max_tokens,
+                stream=False
+            )
+            
+            # Extract response
+            answer = response.choices[0].message.content
+            
+            # Build response metadata
+            result = {
+                "answer": answer,
+                "query": query,
+                "model": use_model,
+                "total_tokens": response.usage.total_tokens,
+                "prompt_tokens": response.usage.prompt_tokens,
+                "completion_tokens": response.usage.completion_tokens,
+            }
+            
+            logger.info(f"Generated direct response ({response.usage.completion_tokens} tokens)")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Failed to generate direct response: {str(e)}")
+            return {
+                "answer": f"I apologize, but I encountered an error while generating a response: {str(e)}",
+                "query": query,
+                "error": str(e),
+                "model": model or self.model,
+                "total_tokens": 0
+            }
+
     def generate_response(self, 
                          query: str, 
                          context_chunks: List[Dict[str, Any]],
