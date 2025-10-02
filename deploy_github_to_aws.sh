@@ -45,6 +45,34 @@ tar -xzf /tmp/rag-deployment.tar.gz
 source rag_env/bin/activate 2>/dev/null || source rag_env_38/bin/activate
 pip install -r requirements.txt --upgrade
 
+# Create systemd service if not exists
+if [ ! -f /etc/systemd/system/rag-app.service ]; then
+    echo "=== Creating systemd service ==="
+    sudo tee /etc/systemd/system/rag-app.service > /dev/null << EOF
+[Unit]
+Description=RAG API Service
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/opt/rag-app
+Environment=PATH=/opt/rag-app/rag_env/bin:/opt/rag-app/rag_env_38/bin:/usr/bin:/bin
+Environment=PYTHONPATH=/opt/rag-app
+ExecStart=/opt/rag-app/rag_env/bin/uvicorn src.api:app --host 0.0.0.0 --port 8000
+ExecStartPre=/bin/bash -c 'source /opt/rag-app/rag_env/bin/activate 2>/dev/null || source /opt/rag-app/rag_env_38/bin/activate'
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    sudo systemctl daemon-reload
+    sudo systemctl enable rag-app
+fi
+
 # Restart service
 sudo systemctl restart rag-app
 sleep 3
