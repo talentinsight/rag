@@ -91,7 +91,7 @@ class RAGPipeline:
             logger.error(f"Failed to initialize RAG pipeline: {str(e)}")
             return False
     
-    def load_document(self, pdf_path: str, clear_existing: bool = True) -> bool:
+    def load_document(self, pdf_path: str, clear_existing: bool = False) -> bool:
         """
         Load and process a PDF document into the vector store
         

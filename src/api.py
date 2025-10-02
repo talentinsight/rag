@@ -109,13 +109,21 @@ async def lifespan(app: FastAPI):
         if await asyncio.get_event_loop().run_in_executor(None, rag_pipeline.initialize):
             logger.info("✅ RAG pipeline initialized")
             
-            # Load the Attention paper
+            # Load the Attention paper (only if not already loaded)
             pdf_path = os.getenv("PDF_PATH", "./AttentionAllYouNeed.pdf")
             if os.path.exists(pdf_path):
-                if await asyncio.get_event_loop().run_in_executor(None, rag_pipeline.load_document, pdf_path):
-                    logger.info("✅ Document loaded successfully")
+                # Check if chunks already exist in vector store
+                stats = rag_pipeline.vector_store.get_stats()
+                chunk_count = stats.get("total_objects", 0)
+                
+                if chunk_count > 0:
+                    logger.info(f"✅ Document already loaded with {chunk_count} chunks, skipping reload")
                 else:
-                    logger.warning("Failed to load document")
+                    logger.info("No existing chunks found, loading document...")
+                    if await asyncio.get_event_loop().run_in_executor(None, rag_pipeline.load_document, pdf_path):
+                        logger.info("✅ Document loaded successfully")
+                    else:
+                        logger.warning("Failed to load document")
             else:
                 logger.warning(f"PDF file not found: {pdf_path}")
         else:
