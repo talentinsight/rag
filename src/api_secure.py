@@ -57,7 +57,7 @@ class QueryRequest(BaseModel):
     """Request model for queries"""
     question: str = Field(..., description="The question to ask about the Attention paper")
     num_chunks: int = Field(default=5, ge=1, le=20, description="Number of chunks to retrieve")
-    min_score: float = Field(default=0.1, ge=0.0, le=1.0, description="Minimum similarity score")
+    min_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Minimum similarity score")
 
 
 class QueryResponse(BaseModel):

@@ -116,8 +116,8 @@ class RAGPipeline:
                 logger.error("Failed to process PDF")
                 return False
             
-            # Create semantic chunks
-            chunker = SemanticChunker(chunk_size=300, chunk_overlap=30, min_chunk_size=50)
+            # Create semantic chunks with optimized settings
+            chunker = SemanticChunker(chunk_size=800, chunk_overlap=100, min_chunk_size=200)
             chunks = chunker.chunk_text(pdf_result['text'])
             
             if not chunks:
@@ -139,7 +139,7 @@ class RAGPipeline:
     def query(self, 
               question: str, 
               num_chunks: int = 5,
-              min_score: float = 0.1) -> Dict[str, Any]:
+              min_score: float = 0.0) -> Dict[str, Any]:
         """
         Query the RAG system
         

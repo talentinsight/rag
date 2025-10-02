@@ -113,7 +113,7 @@ class OpenAIClient:
                 "total_tokens": 0
             }
 
-    def generate_response(self, 
+    def generate_response(self,
                          query: str, 
                          context_chunks: List[Dict[str, Any]],
                          system_prompt: str = None) -> Dict[str, Any]:
