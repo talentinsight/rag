@@ -8,10 +8,10 @@ from typing import List, Dict, Any, Optional
 import os
 from dotenv import load_dotenv
 
-from vector_store_manager import VectorStoreManager
-from openai_client import OpenAIClient
-from semantic_chunker import SemanticChunker
-from pdf_processor import PDFProcessor
+from .vector_store_manager import VectorStoreManager
+from .openai_client import OpenAIClient
+from .semantic_chunker import SemanticChunker
+from .pdf_processor import PDFProcessor
 
 # Load environment variables
 load_dotenv()

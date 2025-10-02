@@ -9,9 +9,9 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 
-from weaviate_client import WeaviateManager
-from mock_vector_store import MockVectorStore
-from semantic_chunker import TextChunk
+from .weaviate_client import WeaviateManager
+from .mock_vector_store import MockVectorStore
+from .semantic_chunker import TextChunk
 
 # Load environment variables
 load_dotenv()

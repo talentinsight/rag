@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 import uvicorn
 from dotenv import load_dotenv
 
-from rag_pipeline import RAGPipeline
+from .rag_pipeline import RAGPipeline
 
 # Load environment variables
 load_dotenv()

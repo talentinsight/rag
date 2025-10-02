@@ -23,7 +23,7 @@ from mcp.types import (
 )
 import mcp.types as types
 
-from rag_pipeline import RAGPipeline
+from .rag_pipeline import RAGPipeline
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

@@ -12,7 +12,7 @@ import websockets
 from websockets.server import WebSocketServerProtocol
 from datetime import datetime
 
-from rag_pipeline import RAGPipeline
+from .rag_pipeline import RAGPipeline
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
