@@ -59,8 +59,7 @@ User=ec2-user
 WorkingDirectory=/opt/rag-app
 Environment=PATH=/opt/rag-app/rag_env/bin:/opt/rag-app/rag_env_38/bin:/usr/bin:/bin
 Environment=PYTHONPATH=/opt/rag-app
-ExecStart=/opt/rag-app/rag_env/bin/uvicorn src.api:app --host 0.0.0.0 --port 8000
-ExecStartPre=/bin/bash -c 'source /opt/rag-app/rag_env/bin/activate 2>/dev/null || source /opt/rag-app/rag_env_38/bin/activate'
+ExecStart=/opt/rag-app/rag_env_38/bin/uvicorn src.api:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -80,6 +79,14 @@ sudo systemctl status rag-app --no-pager
 
 # Test deployment
 echo "=== Testing deployment ==="
+echo "--- Service Status ---"
+sudo systemctl status rag-app --no-pager || echo "Service not found"
+echo "--- Service Logs (last 20 lines) ---"
+sudo journalctl -u rag-app --no-pager -n 20 || echo "No logs found"
+echo "--- Process Check ---"
+ps aux | grep -E "(uvicorn|python.*api)" | grep -v grep || echo "No API processes running"
+echo "--- Port Check ---"
+netstat -tlnp | grep :8000 || echo "Port 8000 not in use"
 sleep 5
 curl -k https://localhost/health && echo "✅ Health check passed" || echo "❌ Health check failed"
 
