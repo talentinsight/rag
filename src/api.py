@@ -19,6 +19,13 @@ from dotenv import load_dotenv
 
 from .rag_pipeline import RAGPipeline
 
+# Load environment variables
+load_dotenv()
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # MCP WebSocket server import - conditional for deployment
 try:
     from .mcp_websocket_server import WebSocketMCPServer
@@ -26,13 +33,6 @@ try:
 except ImportError:
     MCP_AVAILABLE = False
     logger.warning("MCP WebSocket server not available")
-
-# Load environment variables
-load_dotenv()
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # Global RAG pipeline instance
 rag_pipeline: Optional[RAGPipeline] = None
