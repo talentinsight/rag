@@ -231,7 +231,7 @@ class WeaviateManager:
             List[Dict]: List of similar chunks with metadata
         """
         try:
-            logger.info(f"Searching for similar chunks: '{query[:50]}...'")
+            logger.info(f"Searching for similar chunks: '{query[:50]}...' with min_score={min_score}")
             
             if not self.collection:
                 logger.error("Collection not initialized")
@@ -244,10 +244,22 @@ class WeaviateManager:
                 return_metadata=["score", "distance"]
             )
             
+            logger.info(f"Weaviate returned {len(response.objects)} objects")
+            
             results = []
-            for obj in response.objects:
-                # Filter by minimum score if specified
+            for i, obj in enumerate(response.objects):
+                # Get score and distance
                 score = obj.metadata.score if obj.metadata.score else 0
+                distance = obj.metadata.distance if obj.metadata.distance else 1.0
+                
+                logger.info(f"Object {i}: score={score}, distance={distance}")
+                
+                # In Weaviate, lower distance = higher similarity
+                # Convert distance to similarity score if needed
+                if score == 0 and distance > 0:
+                    score = 1.0 - distance
+                
+                # Filter by minimum score if specified
                 if score >= min_score:
                     result = {
                         "content": obj.properties.get("content", ""),
@@ -255,11 +267,13 @@ class WeaviateManager:
                         "section_title": obj.properties.get("section_title", ""),
                         "token_count": obj.properties.get("token_count", 0),
                         "score": score,
-                        "distance": obj.metadata.distance if obj.metadata.distance else 1.0
+                        "distance": distance
                     }
                     results.append(result)
+                else:
+                    logger.info(f"Filtered out object {i}: score {score} < min_score {min_score}")
             
-            logger.info(f"Found {len(results)} similar chunks")
+            logger.info(f"Found {len(results)} similar chunks after filtering")
             return results
             
         except Exception as e:
