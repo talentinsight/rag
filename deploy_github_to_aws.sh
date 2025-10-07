@@ -15,15 +15,15 @@ echo "🚀 Starting GitHub to AWS deployment..."
 # Create deployment package
 echo "=== Creating deployment package ==="
 tar -czf rag-deployment.tar.gz \
-  src/ \
-  requirements.txt \
-  README.md \
-  nginx-configs/ \
   --exclude='src/__pycache__' \
   --exclude='*.pyc' \
   --exclude='.env' \
   --exclude='*.pem' \
-  --exclude='*.csv'
+  --exclude='*.csv' \
+  src/ \
+  requirements.txt \
+  README.md \
+  nginx-configs/
 
 echo "=== Uploading to EC2 ==="
 scp -i $SSH_KEY -o StrictHostKeyChecking=no \
