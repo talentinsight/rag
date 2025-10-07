@@ -45,6 +45,10 @@ tar -xzf /tmp/rag-deployment.tar.gz
 source rag_env/bin/activate 2>/dev/null || source rag_env_38/bin/activate
 pip install -r requirements.txt --upgrade
 
+# Stop service before updating
+echo "=== Stopping existing service ==="
+sudo systemctl stop rag-app || echo "Service not running"
+
 # Create/Update systemd service (always recreate to ensure latest config)
 echo "=== Creating/Updating systemd service ==="
 sudo tee /etc/systemd/system/rag-app.service > /dev/null << EOF
