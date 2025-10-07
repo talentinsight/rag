@@ -271,28 +271,49 @@ async def query_with_comprehensive_guardrails(
         )
         
         if not input_passed:
-            # Block the request
+            # Instead of blocking, provide a safe response
             failed_checks = [r for r in input_results if not r.passed]
             critical_failures = [r for r in failed_checks if r.severity == "critical"]
             
+            # Generate appropriate safe response based on failure type
             if critical_failures:
-                # Critical failures get special handling
-                detail = {
-                    "error": "Request blocked by critical safety guardrails",
-                    "critical_issues": [r.reason for r in critical_failures],
-                    "all_issues": [r.reason for r in failed_checks],
-                    "categories": [r.category for r in failed_checks],
-                    "support_message": "If you're experiencing a crisis, please contact emergency services or a crisis helpline."
-                }
+                # Critical failures (self-harm, etc.)
+                safe_answer = "I'm concerned about your well-being. If you're experiencing thoughts of self-harm or crisis, please reach out to a mental health professional, crisis helpline, or emergency services immediately. I'm here to help with academic and research questions in a safe manner."
             else:
-                detail = {
-                    "error": "Request blocked by safety guardrails",
-                    "reasons": [r.reason for r in failed_checks],
-                    "categories": [r.category for r in failed_checks],
-                    "severity_levels": [r.severity for r in failed_checks]
-                }
+                # Regular guardrails failures (PII, inappropriate content, etc.)
+                failed_categories = [r.category for r in failed_checks]
+                
+                if "pii_detection" in failed_categories:
+                    safe_answer = "I cannot provide responses that involve personal information such as phone numbers, email addresses, or other private data. I can help you with questions about the research content without including personal information."
+                elif "adult_content" in failed_categories:
+                    safe_answer = "I cannot provide responses to requests involving adult or inappropriate content. I'm designed to help with academic and research questions in a professional manner."
+                elif "data_leakage_prevention" in failed_categories:
+                    safe_answer = "I cannot provide access to private data, internal systems, or confidential information. I can help you with publicly available research content and academic questions."
+                elif "bias_detection" in failed_categories:
+                    safe_answer = "I aim to provide fair and unbiased information. I cannot provide responses that may contain harmful stereotypes or biased content. Let me help you with objective research information instead."
+                else:
+                    safe_answer = "I cannot provide a response to this request due to safety guidelines. I'm here to help with academic and research questions about the attention mechanism and transformer architecture."
             
-            raise HTTPException(status_code=400, detail=detail)
+            # Calculate processing time
+            processing_time = (datetime.now() - start_time).total_seconds() * 1000
+            
+            # Calculate safety score
+            safety_score = _calculate_safety_score(input_results, [])
+            
+            # Return safe response instead of error
+            return QueryResponse(
+                answer=safe_answer,
+                question=request.question,
+                chunks_found=0,
+                sources=[],
+                model="safety-filter",
+                total_tokens=0,
+                processing_time_ms=processing_time,
+                guardrails_passed=False,
+                input_guardrails=_convert_guardrail_results(input_results),
+                output_guardrails=[],
+                safety_score=safety_score
+            )
         
         # Process with RAG pipeline
         logger.info("Input guardrails passed, processing with RAG pipeline")
