@@ -45,10 +45,9 @@ tar -xzf /tmp/rag-deployment.tar.gz
 source rag_env/bin/activate 2>/dev/null || source rag_env_38/bin/activate
 pip install -r requirements.txt --upgrade
 
-# Create systemd service if not exists
-if [ ! -f /etc/systemd/system/rag-app.service ]; then
-    echo "=== Creating systemd service ==="
-    sudo tee /etc/systemd/system/rag-app.service > /dev/null << EOF
+# Create/Update systemd service (always recreate to ensure latest config)
+echo "=== Creating/Updating systemd service ==="
+sudo tee /etc/systemd/system/rag-app.service > /dev/null << EOF
 [Unit]
 Description=RAG API Service
 After=network.target
@@ -68,9 +67,8 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 EOF
-    sudo systemctl daemon-reload
-    sudo systemctl enable rag-app
-fi
+sudo systemctl daemon-reload
+sudo systemctl enable rag-app
 
 # Restart service
 sudo systemctl restart rag-app
