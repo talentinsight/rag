@@ -59,7 +59,7 @@ User=ec2-user
 WorkingDirectory=/opt/rag-app
 Environment=PATH=/opt/rag-app/rag_env/bin:/opt/rag-app/rag_env_38/bin:/usr/bin:/bin
 Environment=PYTHONPATH=/opt/rag-app
-ExecStart=/opt/rag-app/rag_env_38/bin/uvicorn src.api:app --host 0.0.0.0 --port 8000
+ExecStart=/opt/rag-app/rag_env_38/bin/uvicorn src.api_comprehensive_guardrails:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=10
 StandardOutput=journal
