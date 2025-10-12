@@ -49,6 +49,11 @@ pip install -r requirements.txt --upgrade
 echo "=== Stopping existing service ==="
 sudo systemctl stop rag-app || echo "Service not running"
 
+# Clear any cached vector store data to force re-initialization
+echo "=== Clearing vector store cache ==="
+rm -rf /tmp/mock_vector_store.pkl || echo "No mock store to clear"
+rm -rf /opt/rag-app/vector_store_cache/* || echo "No cache directory"
+
 # Create/Update systemd service (always recreate to ensure latest config)
 echo "=== Creating/Updating systemd service ==="
 sudo tee /etc/systemd/system/rag-app.service > /dev/null << EOF
