@@ -107,11 +107,19 @@ jobs:
         python3 -c 'import sys; sys.path.append("src"); from src.rag_pipeline import RAGPipeline; import os; rag = RAGPipeline(prefer_weaviate=True); rag.initialize() and os.path.exists("AttentionAllYouNeed.pdf") and rag.load_document("AttentionAllYouNeed.pdf", clear_existing=True) and rag.close()' || echo "Reload failed"
         
         # Stop and restart service to force pipeline re-initialization
-        echo "=== Restarting service ==="
+        echo "=== Force killing all API processes ==="
+        sudo pkill -f "uvicorn.*api" || echo "No uvicorn processes"
+        sudo pkill -f "python.*api" || echo "No python API processes"
+        
+        echo "=== Clearing all caches ==="
+        rm -rf /tmp/*.pkl || echo "No pkl files"
+        rm -rf ~/.cache/ || echo "No cache dir"
+        
+        echo "=== Fresh service restart ==="
         sudo systemctl stop rag-app || echo "Service not running"
-        sleep 3
-        sudo systemctl start rag-app
         sleep 5
+        sudo systemctl start rag-app
+        sleep 10
         sudo systemctl status rag-app --no-pager
         
         # Test deployment
