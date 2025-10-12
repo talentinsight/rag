@@ -135,8 +135,8 @@ class RAGPipeline:
                 logger.error("Failed to process PDF")
                 return False
             
-            # Create semantic chunks with optimized settings
-            chunker = SemanticChunker(chunk_size=800, chunk_overlap=100, min_chunk_size=200)
+            # Create semantic chunks with optimized settings for 24 chunks
+            chunker = SemanticChunker(chunk_size=400, chunk_overlap=50, min_chunk_size=100)
             chunks = chunker.chunk_text(pdf_result['text'])
             
             if not chunks:

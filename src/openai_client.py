@@ -240,7 +240,8 @@ Guidelines:
 - Be precise and technical in your explanations
 - Include relevant mathematical concepts or architectural details when appropriate
 - If asked about concepts not covered in the context, acknowledge the limitation
-- Maintain a scholarly, informative tone"""
+- Maintain a scholarly, informative tone
+- IMPORTANT: Keep your response to a maximum of 50 words. Always complete your sentences naturally - never cut off mid-sentence. If you need more space, prioritize the most important information."""
     
     def _build_user_prompt(self, query: str, context: str) -> str:
         """
