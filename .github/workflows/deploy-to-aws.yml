@@ -100,6 +100,34 @@ jobs:
         echo "=== Clearing vector store cache ==="
         rm -rf /tmp/mock_vector_store.pkl || echo "No mock store to clear"
         
+        # Clear Weaviate database by forcing document reload
+        echo "=== Forcing document reload with new chunk settings ==="
+        cd /opt/rag-app
+        source rag_env_38/bin/activate
+        python3 -c "
+import sys
+sys.path.append('src')
+from src.rag_pipeline import RAGPipeline
+import os
+
+print('Initializing RAG pipeline...')
+rag = RAGPipeline(prefer_weaviate=True)
+if rag.initialize():
+    print('Force reloading document with new chunk settings...')
+    pdf_path = 'AttentionAllYouNeed.pdf'
+    if os.path.exists(pdf_path):
+        success = rag.load_document(pdf_path, clear_existing=True)
+        if success:
+            print('✅ Document reloaded with new 24-chunk configuration')
+        else:
+            print('❌ Failed to reload document')
+    else:
+        print('❌ PDF file not found')
+    rag.close()
+else:
+    print('❌ Failed to initialize pipeline')
+" || echo "Document reload failed, continuing with deployment"
+        
         # Stop and restart service to force pipeline re-initialization
         echo "=== Restarting service ==="
         sudo systemctl stop rag-app || echo "Service not running"
