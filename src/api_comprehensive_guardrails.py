@@ -77,6 +77,7 @@ class QueryResponse(BaseModel):
     """Enhanced query response model"""
     answer: str = Field(..., description="Generated answer")
     question: str = Field(..., description="Original question")
+    pii_masked_input: str = Field(..., description="Input with PII masked for evaluation")
     chunks_found: int = Field(..., description="Number of relevant chunks found")
     sources: List[Dict[str, Any]] = Field(default=[], description="Source chunks used")
     model: Optional[str] = Field(None, description="Model used for generation")
@@ -263,6 +264,9 @@ async def query_with_comprehensive_guardrails(
     start_time = datetime.now()
     
     try:
+        # Generate PII masked input for evaluation
+        pii_masked_input = guardrails.mask_pii(request.question)
+        
         # Input guardrails check
         logger.info(f"Running input guardrails for client: {request.client_id}")
         input_passed, input_results = guardrails.check_all_input_guardrails(
@@ -304,6 +308,7 @@ async def query_with_comprehensive_guardrails(
             return QueryResponse(
                 answer=safe_answer,
                 question=request.question,
+                pii_masked_input=pii_masked_input,
                 chunks_found=0,
                 sources=[],
                 model="safety-filter",
@@ -361,6 +366,7 @@ async def query_with_comprehensive_guardrails(
         return QueryResponse(
             answer=response["answer"],
             question=request.question,
+            pii_masked_input=pii_masked_input,
             chunks_found=response["chunks_found"],
             sources=response.get("sources", []),
             model=response.get("model"),

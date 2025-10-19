@@ -143,6 +143,34 @@ class ComprehensiveGuardrails:
             category="pii_detection",
             severity="low"
         )
+    
+    def mask_pii(self, text: str) -> str:
+        """
+        Mask PII in text and return the masked version
+        
+        Args:
+            text (str): Input text to mask
+            
+        Returns:
+            str: Text with PII masked
+        """
+        masked_text = text
+        
+        # Define masking patterns for each PII type
+        pii_masks = {
+            "email": "[EMAIL_MASKED]",
+            "phone": "[PHONE_MASKED]", 
+            "credit_card": "[CREDIT_CARD_MASKED]",
+            "ssn": "[SSN_MASKED]",
+            "api_key": "[API_KEY_MASKED]"
+        }
+        
+        # Apply masking for each PII type
+        for pii_type, pattern in self.pii_patterns.items():
+            mask = pii_masks.get(pii_type, "[PII_MASKED]")
+            masked_text = re.sub(pattern, mask, masked_text, flags=re.IGNORECASE)
+        
+        return masked_text
 
     def check_adult_content(self, text: str) -> GuardrailResult:
         """Adult content detection"""

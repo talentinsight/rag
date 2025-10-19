@@ -13,6 +13,7 @@ from websockets.server import WebSocketServerProtocol
 from datetime import datetime
 
 from .rag_pipeline import RAGPipeline
+from .comprehensive_guardrails import ComprehensiveGuardrails
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -26,6 +27,7 @@ class WebSocketMCPServer:
         self.host = host
         self.port = port
         self.rag_pipeline: Optional[RAGPipeline] = None
+        self.guardrails = ComprehensiveGuardrails()
         self.clients: set = set()
         self.conversation_history = []
         self.session_stats = {
@@ -323,6 +325,48 @@ class WebSocketMCPServer:
                     },
                     "required": []
                 }
+            },
+            {
+                "name": "mask_pii_text",
+                "description": "Mask personally identifiable information (PII) in text. Detects and masks emails, phone numbers, credit cards, SSNs, and API keys.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string",
+                            "description": "The text to analyze and mask for PII"
+                        }
+                    },
+                    "required": ["text"]
+                }
+            },
+            {
+                "name": "query_with_pii_masking",
+                "description": "Query the paper with automatic PII masking. Returns both the answer and the PII-masked version of the input for evaluation.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "The question to ask about the Attention paper"
+                        },
+                        "num_chunks": {
+                            "type": "integer",
+                            "description": "Number of relevant chunks to retrieve (1-20)",
+                            "minimum": 1,
+                            "maximum": 20,
+                            "default": 5
+                        },
+                        "min_score": {
+                            "type": "number",
+                            "description": "Minimum similarity score for chunks (0.0-1.0)",
+                            "minimum": 0.0,
+                            "maximum": 1.0,
+                            "default": 0.1
+                        }
+                    },
+                    "required": ["question"]
+                }
             }
         ]
         
@@ -365,6 +409,10 @@ class WebSocketMCPServer:
                 result = await self.handle_compare_chunks(arguments)
             elif tool_name == "get_conversation_history":
                 result = await self.handle_get_conversation_history(arguments)
+            elif tool_name == "mask_pii_text":
+                result = await self.handle_mask_pii(arguments)
+            elif tool_name == "query_with_pii_masking":
+                result = await self.handle_query_with_pii_masking(arguments)
             else:
                 return {
                     "jsonrpc": "2.0",
@@ -708,6 +756,115 @@ class WebSocketMCPServer:
         
         response_parts.append(f"**Connected Clients:** {len(self.clients)}")
         response_parts.append(f"**Timestamp:** {datetime.now().isoformat()}")
+        
+        return "\n".join(response_parts)
+    
+    async def handle_mask_pii(self, arguments: Dict[str, Any]) -> str:
+        """Handle PII masking tool"""
+        text = arguments.get("text", "")
+        
+        if not text:
+            return "❌ Please provide text to analyze for PII."
+        
+        logger.info(f"WebSocket MCP PII Masking: {text[:50]}...")
+        
+        # Check for PII and get masked version
+        pii_result = self.guardrails.check_pii_detection(text)
+        masked_text = self.guardrails.mask_pii(text)
+        
+        # Format response
+        response_parts = [
+            "🔒 **PII Analysis and Masking**",
+            "",
+            f"**Original Text:** {text}",
+            f"**Masked Text:** {masked_text}",
+            "",
+            f"**PII Detection Result:**",
+            f"  - Passed: {'✅ No PII detected' if pii_result.passed else '❌ PII detected'}",
+            f"  - Score: {pii_result.score:.3f}",
+            f"  - Reason: {pii_result.reason}",
+            f"  - Severity: {pii_result.severity}"
+        ]
+        
+        if hasattr(pii_result, 'metadata') and pii_result.metadata:
+            metadata = pii_result.metadata
+            if 'detected_types' in metadata:
+                response_parts.append(f"  - Types Found: {', '.join(metadata['detected_types'])}")
+            if 'count' in metadata:
+                response_parts.append(f"  - Total Instances: {metadata['count']}")
+        
+        return "\n".join(response_parts)
+    
+    async def handle_query_with_pii_masking(self, arguments: Dict[str, Any]) -> str:
+        """Handle paper query with PII masking"""
+        question = arguments.get("question", "")
+        num_chunks = arguments.get("num_chunks", 5)
+        min_score = arguments.get("min_score", 0.1)
+        
+        if not question:
+            return "❌ Please provide a question to ask about the paper."
+        
+        logger.info(f"WebSocket MCP Query with PII Masking: {question[:50]}...")
+        
+        # Generate PII masked input
+        pii_masked_input = self.guardrails.mask_pii(question)
+        pii_result = self.guardrails.check_pii_detection(question)
+        
+        # Execute query with original question
+        result = self.rag_pipeline.query(question, num_chunks, min_score)
+        
+        # Update session stats
+        self.session_stats["queries_count"] += 1
+        self.session_stats["total_chunks_retrieved"] += result.get("chunks_found", 0)
+        self.session_stats["total_tokens_used"] += result.get("total_tokens", 0)
+        
+        # Add to conversation history with PII info
+        self.conversation_history.append({
+            "timestamp": datetime.now().isoformat(),
+            "type": "query_with_pii_masking",
+            "question": question,
+            "pii_masked_input": pii_masked_input,
+            "pii_detected": not pii_result.passed,
+            "answer": result.get("answer", ""),
+            "chunks_found": result.get("chunks_found", 0),
+            "tokens_used": result.get("total_tokens", 0)
+        })
+        
+        # Format response
+        response_parts = []
+        
+        # PII Analysis section
+        response_parts.extend([
+            "🔒 **PII Analysis:**",
+            f"**Original Question:** {question}",
+            f"**PII Masked Input:** {pii_masked_input}",
+            f"**PII Status:** {'✅ No PII detected' if pii_result.passed else '❌ PII detected'}",
+            ""
+        ])
+        
+        # Main answer
+        response_parts.append(f"**Answer:** {result.get('answer', 'No answer generated')}")
+        response_parts.append(f"**Chunks Found:** {result.get('chunks_found', 0)}")
+        
+        if result.get('model'):
+            response_parts.append(f"**Model:** {result['model']}")
+        
+        if result.get('total_tokens'):
+            response_parts.append(f"**Tokens Used:** {result['total_tokens']}")
+        
+        # Sources with full content
+        sources = result.get('sources', [])
+        if sources:
+            response_parts.append("**Sources:**")
+            for i, source in enumerate(sources, 1):
+                chunk_id = source.get('chunk_id', 'Unknown')
+                section = source.get('section', 'Unknown')
+                score = source.get('score', 0)
+                content = source.get('content', '')
+                
+                response_parts.append(f"{i}. **{chunk_id}** (Section: {section}, Score: {score:.3f})")
+                if content:
+                    response_parts.append(f"   Content: {content[:200]}..." if len(content) > 200 else f"   Content: {content}")
         
         return "\n".join(response_parts)
     
