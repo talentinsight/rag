@@ -57,7 +57,7 @@ class ComprehensiveGuardrails:
             "credit_card": r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b",
             "ssn": r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b",
             "api_key": r"\b[A-Za-z0-9]{32,}\b",
-            "name": r"\b(?:my name is|i am|i'm)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b"
+            "name": r"(?i)\b(?:my name is|i am|i'm)\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\b"
         }
         
         # Adult Content Patterns
