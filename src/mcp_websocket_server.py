@@ -462,9 +462,9 @@ class WebSocketMCPServer:
         # Generate PII masked input for evaluation
         pii_masked_input = self.guardrails.mask_pii(question)
         
-        # Input guardrails check
-        logger.info("Running MCP input guardrails")
-        input_passed, input_results = self.guardrails.check_all_input_guardrails(
+        # Input guardrails check (PII filtering only)
+        logger.info("Running MCP input guardrails (PII filtering only)")
+        input_passed, input_results = self.guardrails.check_input_guardrails_with_pii_filtering(
             question, 
             "mcp_client"
         )

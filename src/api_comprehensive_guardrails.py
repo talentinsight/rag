@@ -309,9 +309,9 @@ async def query_with_comprehensive_guardrails(
         # Generate PII masked input for evaluation
         pii_masked_input = guardrails.mask_pii(request.question)
         
-        # Input guardrails check
-        logger.info(f"Running input guardrails for client: {request.client_id}")
-        input_passed, input_results = guardrails.check_all_input_guardrails(
+        # Input guardrails check (PII filtering only)
+        logger.info(f"Running input guardrails (PII filtering only) for client: {request.client_id}")
+        input_passed, input_results = guardrails.check_input_guardrails_with_pii_filtering(
             request.question, 
             request.client_id
         )

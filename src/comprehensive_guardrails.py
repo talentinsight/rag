@@ -442,6 +442,42 @@ class ComprehensiveGuardrails:
         all_passed = all(r.passed for r in results)
         return all_passed, results
 
+    def check_input_guardrails_with_pii_filtering(self, text: str, client_id: str = "default") -> Tuple[bool, List[GuardrailResult]]:
+        """Run guardrails with PII filtering only (PRODUCTION VERSION)"""
+        start_time = datetime.now()
+        results = []
+        
+        # Critical checks that can block requests
+        results.append(self.check_rate_limits(client_id))
+        results.append(self.check_pii_detection(text))  # ONLY PII blocks requests
+        results.append(self.check_data_leakage_prevention(text))
+        results.append(self.check_input_sanitation(text))
+        
+        # Detection-only checks (don't block, just log)
+        adult_result = self.check_adult_content(text)
+        adult_result.passed = True  # Force pass - just detect, don't block
+        results.append(adult_result)
+        
+        profanity_result = self.check_profanity_filter(text)
+        profanity_result.passed = True  # Force pass - just detect, don't block
+        results.append(profanity_result)
+        
+        bias_result = self.check_bias_detection(text)
+        bias_result.passed = True  # Force pass - just detect, don't block
+        results.append(bias_result)
+        
+        # Performance check
+        results.append(self.check_latency_performance(start_time, max_latency_ms=1000))
+        
+        # Update stats
+        self._update_stats(results)
+        
+        # Only PII and critical checks can fail the request
+        blocking_results = [r for r in results if r.category in ["rate_limits", "pii_detection", "data_leakage_prevention", "input_sanitation", "latency_performance"]]
+        all_passed = all(r.passed for r in blocking_results)
+        
+        return all_passed, results
+
     def check_output_guardrails(self, response_data: Dict[str, Any], start_time: datetime) -> Tuple[bool, List[GuardrailResult]]:
         """Run output-related guardrail checks"""
         results = []
