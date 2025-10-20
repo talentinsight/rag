@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from contextlib import asynccontextmanager
 import os
 import json
 import time
@@ -34,8 +35,27 @@ rag_pipeline: Optional[RAGPipeline] = None
 # Initialize comprehensive guardrails
 guardrails = ComprehensiveGuardrails()
 
-# Initialize RAG pipeline
-rag_pipeline: Optional[RAGPipeline] = None
+# Initialize RAG pipeline at startup
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize and cleanup RAG pipeline"""
+    global rag_pipeline
+    try:
+        logger.info("Initializing RAG pipeline at startup...")
+        rag_pipeline = RAGPipeline()
+        if rag_pipeline.initialize():
+            logger.info("✅ RAG pipeline initialized successfully")
+        else:
+            logger.error("❌ RAG pipeline initialization failed")
+    except Exception as e:
+        logger.error(f"Failed to initialize RAG pipeline: {str(e)}")
+    
+    yield
+    
+    # Cleanup
+    if rag_pipeline:
+        rag_pipeline.close()
+        logger.info("RAG pipeline closed")
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Verify bearer token"""
@@ -115,7 +135,8 @@ class StatsResponse(BaseModel):
 app = FastAPI(
     title="RAG API - Comprehensive Guardrails",
     description="RAG API for the Attention Is All You Need paper with comprehensive safety guardrails",
-    version="2.0.0"
+    version="2.0.0",
+    lifespan=lifespan
 )
 
 # Add CORS middleware
