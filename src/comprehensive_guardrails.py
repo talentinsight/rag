@@ -56,7 +56,8 @@ class ComprehensiveGuardrails:
             "phone": r"\b\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b",
             "credit_card": r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b",
             "ssn": r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b",
-            "api_key": r"\b[A-Za-z0-9]{32,}\b"
+            "api_key": r"\b[A-Za-z0-9]{32,}\b",
+            "name": r"\b(?:my name is|i am|i'm)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b"
         }
         
         # Adult Content Patterns
@@ -162,13 +163,18 @@ class ComprehensiveGuardrails:
             "phone": "[PHONE_MASKED]", 
             "credit_card": "[CREDIT_CARD_MASKED]",
             "ssn": "[SSN_MASKED]",
-            "api_key": "[API_KEY_MASKED]"
+            "api_key": "[API_KEY_MASKED]",
+            "name": "[NAME_MASKED]"
         }
         
         # Apply masking for each PII type
         for pii_type, pattern in self.pii_patterns.items():
             mask = pii_masks.get(pii_type, "[PII_MASKED]")
-            masked_text = re.sub(pattern, mask, masked_text, flags=re.IGNORECASE)
+            if pii_type == "name":
+                # Special handling for name pattern (replace only the captured name part)
+                masked_text = re.sub(pattern, lambda m: m.group(0).replace(m.group(1), mask), masked_text, flags=re.IGNORECASE)
+            else:
+                masked_text = re.sub(pattern, mask, masked_text, flags=re.IGNORECASE)
         
         return masked_text
 
