@@ -54,8 +54,10 @@ echo "=== Clearing vector store cache ==="
 rm -rf /tmp/mock_vector_store.pkl || echo "No mock store to clear"
 rm -rf /opt/rag-app/vector_store_cache/* || echo "No cache directory"
 
-# Create/Update systemd service (always recreate to ensure latest config)
-echo "=== Creating/Updating systemd service ==="
+# Create/Update systemd services (always recreate to ensure latest config)
+echo "=== Creating/Updating systemd services ==="
+
+# Main RAG API service
 sudo tee /etc/systemd/system/rag-app.service > /dev/null << EOF
 [Unit]
 Description=RAG API Service
@@ -76,24 +78,53 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 EOF
+
+# MCP WebSocket service
+sudo tee /etc/systemd/system/rag-mcp.service > /dev/null << EOF
+[Unit]
+Description=RAG MCP WebSocket Server
+After=network.target rag-app.service
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/opt/rag-app
+Environment=PATH=/opt/rag-app/rag_env/bin:/opt/rag-app/rag_env_38/bin:/usr/bin:/bin
+Environment=PYTHONPATH=/opt/rag-app
+ExecStart=/opt/rag-app/rag_env_38/bin/python -m src.mcp_websocket_server
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 sudo systemctl daemon-reload
 sudo systemctl enable rag-app
+sudo systemctl enable rag-mcp
 
-# Restart service
+# Restart services
 sudo systemctl restart rag-app
+sudo systemctl restart rag-mcp
 sleep 3
 sudo systemctl status rag-app --no-pager
+sudo systemctl status rag-mcp --no-pager
 
 # Test deployment
 echo "=== Testing deployment ==="
 echo "--- Service Status ---"
-sudo systemctl status rag-app --no-pager || echo "Service not found"
+sudo systemctl status rag-app --no-pager || echo "RAG API service not found"
+sudo systemctl status rag-mcp --no-pager || echo "MCP service not found"
 echo "--- Service Logs (last 20 lines) ---"
-sudo journalctl -u rag-app --no-pager -n 20 || echo "No logs found"
+sudo journalctl -u rag-app --no-pager -n 20 || echo "No RAG API logs found"
+sudo journalctl -u rag-mcp --no-pager -n 20 || echo "No MCP logs found"
 echo "--- Process Check ---"
-ps aux | grep -E "(uvicorn|python.*api)" | grep -v grep || echo "No API processes running"
+ps aux | grep -E "(uvicorn|python.*api|python.*mcp)" | grep -v grep || echo "No API/MCP processes running"
 echo "--- Port Check ---"
 netstat -tlnp | grep :8000 || echo "Port 8000 not in use"
+netstat -tlnp | grep :8001 || echo "Port 8001 not in use"
 sleep 5
 curl -k https://localhost/health && echo "✅ Health check passed" || echo "❌ Health check failed"
 

@@ -115,12 +115,39 @@ jobs:
         rm -rf /tmp/*.pkl || echo "No pkl files"
         rm -rf ~/.cache/ || echo "No cache dir"
         
+        echo "=== Creating MCP WebSocket service ==="
+        sudo tee /etc/systemd/system/rag-mcp.service > /dev/null << EOF
+        [Unit]
+        Description=RAG MCP WebSocket Server
+        After=network.target rag-app.service
+
+        [Service]
+        Type=simple
+        User=ec2-user
+        WorkingDirectory=/opt/rag-app
+        Environment=PATH=/opt/rag-app/rag_env/bin:/opt/rag-app/rag_env_38/bin:/usr/bin:/bin
+        Environment=PYTHONPATH=/opt/rag-app
+        ExecStart=/opt/rag-app/rag_env_38/bin/python -m src.mcp_websocket_server
+        Restart=always
+        RestartSec=10
+        StandardOutput=journal
+        StandardError=journal
+
+        [Install]
+        WantedBy=multi-user.target
+        EOF
+        sudo systemctl daemon-reload
+        sudo systemctl enable rag-mcp
+
         echo "=== Fresh service restart ==="
-        sudo systemctl stop rag-app || echo "Service not running"
+        sudo systemctl stop rag-app || echo "RAG API service not running"
+        sudo systemctl stop rag-mcp || echo "MCP service not running"
         sleep 5
         sudo systemctl start rag-app
+        sudo systemctl start rag-mcp
         sleep 10
         sudo systemctl status rag-app --no-pager
+        sudo systemctl status rag-mcp --no-pager
         
         # Test deployment
         sleep 5
