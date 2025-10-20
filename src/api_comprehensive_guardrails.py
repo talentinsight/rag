@@ -28,6 +28,9 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer()
 BEARER_TOKEN = "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0"
 
+# Global RAG pipeline instance
+rag_pipeline: Optional[RAGPipeline] = None
+
 # Initialize comprehensive guardrails
 guardrails = ComprehensiveGuardrails()
 
@@ -145,13 +148,31 @@ async def root():
 async def health_check():
     """Comprehensive health check"""
     try:
-        pipeline = get_rag_pipeline()
-        vector_stats = pipeline.vector_store.get_collection_stats()
-        openai_available = pipeline.openai_client is not None
+        global rag_pipeline
+        
+        # Check if pipeline exists and is initialized
+        pipeline_initialized = rag_pipeline is not None
+        openai_available = False
+        vector_stats = {}
+        
+        if pipeline_initialized:
+            try:
+                # Test OpenAI connection
+                openai_available = (
+                    rag_pipeline.openai_client is not None and 
+                    rag_pipeline.openai_client.test_connection()
+                )
+                # Get vector store stats
+                vector_stats = rag_pipeline.vector_store.get_collection_stats()
+            except Exception as e:
+                logger.warning(f"Pipeline check failed: {str(e)}")
+                pipeline_initialized = False
+        
+        status = "healthy" if (pipeline_initialized and openai_available) else "unhealthy"
         
         return HealthResponse(
-            status="healthy",
-            pipeline_initialized=True,
+            status=status,
+            pipeline_initialized=pipeline_initialized,
             openai_available=openai_available,
             vector_store_stats=vector_stats,
             guardrails_active=True,
