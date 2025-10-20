@@ -280,7 +280,7 @@ class RAGMCPServer:
         response_parts = []
         
         # Main answer
-        response_parts.append(f"**Answer:** {result.get('answer', 'No answer generated')}")
+        response_parts.append(f"**Answer:** {result.get('answer', 'ERROR: No response')}")
         
         # Metadata
         chunks_found = result.get('chunks_found', 0)
@@ -504,7 +504,7 @@ class RAGMCPServer:
         ])
         
         # Main answer
-        response_parts.append(f"**Answer:** {result.get('answer', 'No answer generated')}")
+        response_parts.append(f"**Answer:** {result.get('answer', 'ERROR: No response')}")
         
         # Metadata
         chunks_found = result.get('chunks_found', 0)

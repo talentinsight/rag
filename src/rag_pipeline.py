@@ -187,48 +187,29 @@ class RAGPipeline:
                 min_score=min_score
             )
             
-            if not relevant_chunks:
-                return {
-                    "answer": "I couldn't find any relevant information in the document to answer your question.",
-                    "question": question,
-                    "chunks_found": 0,
-                    "sources": []
-                }
-            
             logger.info(f"Retrieved {len(relevant_chunks)} relevant chunks")
             
-            # Generate response using OpenAI (if available)
+            # Generate response using OpenAI (if available) - ALWAYS use LLM even with no chunks
             if self.openai_client:
                 response = self.openai_client.generate_response(question, relevant_chunks)
                 response["chunks_found"] = len(relevant_chunks)
                 return response
+            
+            # Fallback only when OpenAI is not available - return error, no hard-coded responses
             else:
-                # Fallback: return chunks without AI generation
-                context = "\\n\\n".join([
-                    f"[Chunk {i+1}] (Section: {chunk.get('section_title', 'Unknown')}, Score: {chunk.get('score', 0):.3f})\\n{chunk.get('content', '')}"
-                    for i, chunk in enumerate(relevant_chunks)
-                ])
-                
                 return {
-                    "answer": f"Based on the retrieved context:\\n\\n{context}\\n\\nNote: AI response generation is not available. Please provide an OpenAI API key for enhanced responses.",
+                    "error": "OpenAI API not available",
+                    "answer": "ERROR: LLM service unavailable",
                     "question": question,
                     "chunks_found": len(relevant_chunks),
-                    "sources": [
-                        {
-                            "chunk_id": chunk.get("chunk_id", ""),
-                            "section": chunk.get("section_title", ""),
-                            "score": chunk.get("score", 0.0),
-                            "content": chunk.get("content", "")
-                        }
-                        for chunk in relevant_chunks
-                    ]
+                    "sources": []
                 }
             
         except Exception as e:
             logger.error(f"Query failed: {str(e)}")
             return {
                 "error": str(e),
-                "answer": f"An error occurred while processing your question: {str(e)}",
+                "answer": f"ERROR: {str(e)}",
                 "question": question,
                 "chunks_found": 0
             }

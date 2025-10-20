@@ -245,7 +245,7 @@ async def query_rag(
         
         # Build response
         response = QueryResponse(
-            answer=result.get("answer", "No answer generated"),
+            answer=result.get("answer", "ERROR: No response"),
             question=result.get("question", request.question),
             chunks_found=result.get("chunks_found", 0),
             sources=result.get("sources", []),

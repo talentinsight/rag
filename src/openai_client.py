@@ -106,7 +106,7 @@ class OpenAIClient:
         except Exception as e:
             logger.error(f"Failed to generate direct response: {str(e)}")
             return {
-                "answer": f"I apologize, but I encountered an error while generating a response: {str(e)}",
+                "answer": f"ERROR: {str(e)}",
                 "query": query,
                 "error": str(e),
                 "model": model or self.model,
@@ -187,7 +187,7 @@ class OpenAIClient:
         except Exception as e:
             logger.error(f"Failed to generate response: {str(e)}")
             return {
-                "answer": f"I apologize, but I encountered an error while generating a response: {str(e)}",
+                "answer": f"ERROR: {str(e)}",
                 "query": query,
                 "error": str(e),
                 "model": self.model,

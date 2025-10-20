@@ -454,7 +454,7 @@ class WebSocketMCPServer:
         min_score = arguments.get("min_score", 0.1)
         
         if not question:
-            return "❌ Please provide a question to ask about the paper."
+            return "ERROR: Missing a question to ask about the paper."
         
         logger.info(f"WebSocket MCP Query: {question[:50]}...")
         start_time = datetime.now()
@@ -475,9 +475,9 @@ class WebSocketMCPServer:
             critical_failures = [r for r in failed_checks if r.severity == "critical"]
             
             if critical_failures:
-                safe_answer = "❌ Request blocked by critical safety guidelines. Please ensure your question is appropriate and try again."
+                safe_answer = "BLOCKED: Critical safety violation"
             else:
-                safe_answer = "⚠️ Request filtered by safety guidelines. I'm here to help with academic questions about the Attention mechanism and Transformer architecture."
+                safe_answer = "BLOCKED: PII detected in request"
             
             # Calculate processing time
             processing_time = (datetime.now() - start_time).total_seconds() * 1000
@@ -523,7 +523,7 @@ class WebSocketMCPServer:
             
             # Sanitize response for output failures
             if any(r.category in ["adult_content", "profanity_filter", "pii_detection"] for r in failed_output_checks):
-                result["answer"] = "I apologize, but I cannot provide a response that meets our safety guidelines. Please rephrase your question about the Transformer architecture."
+                result["answer"] = "OUTPUT_FILTERED: Response modified for safety"
         
         # Update session stats
         self.session_stats["queries_count"] += 1
@@ -551,7 +551,7 @@ class WebSocketMCPServer:
         
         # Format response with guardrails information
         response_parts = []
-        response_parts.append(f"**Answer:** {result.get('answer', 'No answer generated')}")
+        response_parts.append(f"**Answer:** {result.get('answer', 'ERROR: No response')}")
         response_parts.append(f"**PII Masked Input:** {pii_masked_input}")
         response_parts.append(f"**Chunks Found:** {result.get('chunks_found', 0)}")
         
@@ -603,7 +603,7 @@ class WebSocketMCPServer:
         question = arguments.get("question", "")
         
         if not question:
-            return "❌ Please provide a question to analyze."
+            return "ERROR: Missing a question to analyze."
         
         # Analyze query characteristics
         word_count = len(question.split())
@@ -658,7 +658,7 @@ class WebSocketMCPServer:
         chunk_id = arguments.get("chunk_id", "")
         
         if not chunk_id:
-            return "❌ Please provide a chunk_id."
+            return "ERROR: Missing a chunk_id."
         
         # Search for the chunk in vector store
         try:
@@ -700,7 +700,7 @@ class WebSocketMCPServer:
         chunk_ids = arguments.get("chunk_ids", [])
         
         if not chunk_ids or len(chunk_ids) < 2:
-            return "❌ Please provide at least 2 chunk IDs to compare."
+            return "ERROR: Missing at least 2 chunk IDs to compare."
         
         if len(chunk_ids) > 5:
             return "❌ Maximum 5 chunks can be compared at once."
@@ -794,7 +794,7 @@ class WebSocketMCPServer:
         limit = arguments.get("limit", 5)
         
         if not query:
-            return "❌ Please provide a search query."
+            return "ERROR: Missing a search query."
         
         logger.info(f"WebSocket MCP Search: {query[:50]}...")
         
@@ -850,7 +850,7 @@ class WebSocketMCPServer:
         text = arguments.get("text", "")
         
         if not text:
-            return "❌ Please provide text to analyze for PII."
+            return "ERROR: Missing text to analyze for PII."
         
         logger.info(f"WebSocket MCP PII Masking: {text[:50]}...")
         
@@ -888,7 +888,7 @@ class WebSocketMCPServer:
         min_score = arguments.get("min_score", 0.1)
         
         if not question:
-            return "❌ Please provide a question to ask about the paper."
+            return "ERROR: Missing a question to ask about the paper."
         
         logger.info(f"WebSocket MCP Query with PII Masking: {question[:50]}...")
         

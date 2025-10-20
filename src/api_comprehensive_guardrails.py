@@ -321,24 +321,14 @@ async def query_with_comprehensive_guardrails(
             failed_checks = [r for r in input_results if not r.passed]
             critical_failures = [r for r in failed_checks if r.severity == "critical"]
             
-            # Generate appropriate safe response based on failure type
-            if critical_failures:
-                # Critical failures (self-harm, etc.)
-                safe_answer = "I'm concerned about your well-being. If you're experiencing thoughts of self-harm or crisis, please reach out to a mental health professional, crisis helpline, or emergency services immediately. I'm here to help with academic and research questions in a safe manner."
+            # Only PII should block - others are detection only now
+            failed_categories = [r.category for r in failed_checks]
+            
+            if "pii_detection" in failed_categories:
+                safe_answer = "BLOCKED: Personal information detected in request"
             else:
-                # Regular guardrails failures (PII, inappropriate content, etc.)
-                failed_categories = [r.category for r in failed_checks]
-                
-                if "pii_detection" in failed_categories:
-                    safe_answer = "I cannot provide responses that involve personal information such as phone numbers, email addresses, or other private data. I can help you with questions about the research content without including personal information."
-                elif "adult_content" in failed_categories:
-                    safe_answer = "I cannot provide responses to requests involving adult or inappropriate content. I'm designed to help with academic and research questions in a professional manner."
-                elif "data_leakage_prevention" in failed_categories:
-                    safe_answer = "I cannot provide access to private data, internal systems, or confidential information. I can help you with publicly available research content and academic questions."
-                elif "bias_detection" in failed_categories:
-                    safe_answer = "I aim to provide fair and unbiased information. I cannot provide responses that may contain harmful stereotypes or biased content. Let me help you with objective research information instead."
-                else:
-                    safe_answer = "I cannot provide a response to this request due to safety guidelines. I'm here to help with academic and research questions about the attention mechanism and transformer architecture."
+                # This should not happen with PII-only filtering
+                safe_answer = "BLOCKED: Safety guidelines violation"
             
             # Calculate processing time
             processing_time = (datetime.now() - start_time).total_seconds() * 1000
@@ -396,7 +386,7 @@ async def query_with_comprehensive_guardrails(
             
             # For output failures, we can sanitize instead of blocking
             if any(r.category in ["adult_content", "profanity_filter", "pii_detection"] for r in failed_output_checks):
-                response["answer"] = "I apologize, but I cannot provide a response that meets our safety guidelines. Please rephrase your question."
+                response["answer"] = "OUTPUT_FILTERED: Response modified for safety"
         
         # Calculate processing time
         processing_time = (datetime.now() - start_time).total_seconds() * 1000
