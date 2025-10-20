@@ -448,7 +448,7 @@ class WebSocketMCPServer:
             }
     
     async def handle_query_paper(self, arguments: Dict[str, Any]) -> str:
-        """Handle paper query tool"""
+        """Handle paper query tool with comprehensive guardrails"""
         question = arguments.get("question", "")
         num_chunks = arguments.get("num_chunks", 5)
         min_score = arguments.get("min_score", 0.1)
@@ -457,9 +457,73 @@ class WebSocketMCPServer:
             return "❌ Please provide a question to ask about the paper."
         
         logger.info(f"WebSocket MCP Query: {question[:50]}...")
+        start_time = datetime.now()
+        
+        # Generate PII masked input for evaluation
+        pii_masked_input = self.guardrails.mask_pii(question)
+        
+        # Input guardrails check
+        logger.info("Running MCP input guardrails")
+        input_passed, input_results = self.guardrails.check_all_input_guardrails(
+            question, 
+            "mcp_client"
+        )
+        
+        if not input_passed:
+            # Return safe response for MCP
+            failed_checks = [r for r in input_results if not r.passed]
+            critical_failures = [r for r in failed_checks if r.severity == "critical"]
+            
+            if critical_failures:
+                safe_answer = "❌ Request blocked by critical safety guidelines. Please ensure your question is appropriate and try again."
+            else:
+                safe_answer = "⚠️ Request filtered by safety guidelines. I'm here to help with academic questions about the Attention mechanism and Transformer architecture."
+            
+            # Calculate processing time
+            processing_time = (datetime.now() - start_time).total_seconds() * 1000
+            
+            # Format guardrails response for MCP
+            guardrails_info = []
+            for result in input_results:
+                if not result.passed:
+                    guardrails_info.append(f"- {result.category}: {result.reason}")
+            
+            response_parts = [
+                f"**Answer:** {safe_answer}",
+                f"**PII Masked Input:** {pii_masked_input}",
+                f"**Chunks Found:** 0",
+                f"**Processing Time:** {processing_time:.1f}ms",
+                f"**Guardrails Status:** ❌ Failed",
+                "**Failed Checks:**"
+            ] + guardrails_info
+            
+            return "\n".join(response_parts)
         
         # Execute query
         result = self.rag_pipeline.query(question, num_chunks, min_score)
+        
+        # Prepare response data for output guardrails
+        response_data = {
+            "answer": result.get("answer", ""),
+            "question": question,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Output guardrails check
+        logger.info("Running MCP output guardrails")
+        output_passed, output_results = self.guardrails.check_output_guardrails(
+            response_data,
+            start_time
+        )
+        
+        if not output_passed:
+            # Log but sanitize response instead of blocking
+            failed_output_checks = [r for r in output_results if not r.passed]
+            logger.warning(f"MCP output guardrails failed: {[r.reason for r in failed_output_checks]}")
+            
+            # Sanitize response for output failures
+            if any(r.category in ["adult_content", "profanity_filter", "pii_detection"] for r in failed_output_checks):
+                result["answer"] = "I apologize, but I cannot provide a response that meets our safety guidelines. Please rephrase your question about the Transformer architecture."
         
         # Update session stats
         self.session_stats["queries_count"] += 1
@@ -476,9 +540,19 @@ class WebSocketMCPServer:
             "tokens_used": result.get("total_tokens", 0)
         })
         
-        # Format response
+        # Calculate processing time and safety score
+        processing_time = (datetime.now() - start_time).total_seconds() * 1000
+        
+        # Calculate safety score (simplified version of API calculation)
+        all_results = input_results + output_results
+        total_score = sum(r.score if r.passed else 0.0 for r in all_results)
+        total_weight = len(all_results)
+        safety_score = total_score / total_weight if total_weight > 0 else 1.0
+        
+        # Format response with guardrails information
         response_parts = []
         response_parts.append(f"**Answer:** {result.get('answer', 'No answer generated')}")
+        response_parts.append(f"**PII Masked Input:** {pii_masked_input}")
         response_parts.append(f"**Chunks Found:** {result.get('chunks_found', 0)}")
         
         if result.get('model'):
@@ -486,6 +560,11 @@ class WebSocketMCPServer:
         
         if result.get('total_tokens'):
             response_parts.append(f"**Tokens Used:** {result['total_tokens']}")
+        
+        # Add guardrails information
+        response_parts.append(f"**Processing Time:** {processing_time:.1f}ms")
+        response_parts.append(f"**Guardrails Status:** {'✅ Passed' if (input_passed and output_passed) else '⚠️ Filtered'}")
+        response_parts.append(f"**Safety Score:** {safety_score:.3f}")
         
         # Sources with full content
         sources = result.get('sources', [])
@@ -501,9 +580,16 @@ class WebSocketMCPServer:
                 if content:
                     response_parts.append(f"   Content: {content[:200]}..." if len(content) > 200 else f"   Content: {content}")
         
+        # Add guardrails details
+        if not (input_passed and output_passed):
+            response_parts.append("**Guardrails Details:**")
+            for result_check in input_results + output_results:
+                if not result_check.passed:
+                    response_parts.append(f"- {result_check.category}: {result_check.reason}")
+        
         # Add LLM Prompt details if available
         if result.get('llm_prompt'):
-            response_parts.append("\\n**LLM Prompt Details:**")
+            response_parts.append("**LLM Prompt Details:**")
             llm_prompt = result.get('llm_prompt', {})
             if llm_prompt.get('system_prompt'):
                 response_parts.append(f"System Prompt: {llm_prompt['system_prompt'][:100]}...")
@@ -796,7 +882,7 @@ class WebSocketMCPServer:
         return "\n".join(response_parts)
     
     async def handle_query_with_pii_masking(self, arguments: Dict[str, Any]) -> str:
-        """Handle paper query with PII masking"""
+        """Handle paper query with PII masking and full guardrails"""
         question = arguments.get("question", "")
         num_chunks = arguments.get("num_chunks", 5)
         min_score = arguments.get("min_score", 0.1)
@@ -806,67 +892,24 @@ class WebSocketMCPServer:
         
         logger.info(f"WebSocket MCP Query with PII Masking: {question[:50]}...")
         
-        # Generate PII masked input
+        # Use the main query handler which now includes full guardrails
+        # This ensures consistent behavior between all MCP tools
+        result = await self.handle_query_paper(arguments)
+        
+        # Add PII-specific information to the response
         pii_masked_input = self.guardrails.mask_pii(question)
         pii_result = self.guardrails.check_pii_detection(question)
         
-        # Execute query with original question
-        result = self.rag_pipeline.query(question, num_chunks, min_score)
-        
-        # Update session stats
-        self.session_stats["queries_count"] += 1
-        self.session_stats["total_chunks_retrieved"] += result.get("chunks_found", 0)
-        self.session_stats["total_tokens_used"] += result.get("total_tokens", 0)
-        
-        # Add to conversation history with PII info
-        self.conversation_history.append({
-            "timestamp": datetime.now().isoformat(),
-            "type": "query_with_pii_masking",
-            "question": question,
-            "pii_masked_input": pii_masked_input,
-            "pii_detected": not pii_result.passed,
-            "answer": result.get("answer", ""),
-            "chunks_found": result.get("chunks_found", 0),
-            "tokens_used": result.get("total_tokens", 0)
-        })
-        
-        # Format response
-        response_parts = []
-        
-        # PII Analysis section
-        response_parts.extend([
-            "🔒 **PII Analysis:**",
-            f"**Original Question:** {question}",
-            f"**PII Masked Input:** {pii_masked_input}",
-            f"**PII Status:** {'✅ No PII detected' if pii_result.passed else '❌ PII detected'}",
+        # Prepend PII-specific information
+        pii_info = [
+            "**PII Masking Analysis:**",
+            f"Original Input: {question}",
+            f"Masked Input: {pii_masked_input}",
+            f"PII Detected: {'Yes' if not pii_result.passed else 'No'}",
             ""
-        ])
+        ]
         
-        # Main answer
-        response_parts.append(f"**Answer:** {result.get('answer', 'No answer generated')}")
-        response_parts.append(f"**Chunks Found:** {result.get('chunks_found', 0)}")
-        
-        if result.get('model'):
-            response_parts.append(f"**Model:** {result['model']}")
-        
-        if result.get('total_tokens'):
-            response_parts.append(f"**Tokens Used:** {result['total_tokens']}")
-        
-        # Sources with full content
-        sources = result.get('sources', [])
-        if sources:
-            response_parts.append("**Sources:**")
-            for i, source in enumerate(sources, 1):
-                chunk_id = source.get('chunk_id', 'Unknown')
-                section = source.get('section', 'Unknown')
-                score = source.get('score', 0)
-                content = source.get('content', '')
-                
-                response_parts.append(f"{i}. **{chunk_id}** (Section: {section}, Score: {score:.3f})")
-                if content:
-                    response_parts.append(f"   Content: {content[:200]}..." if len(content) > 200 else f"   Content: {content}")
-        
-        return "\n".join(response_parts)
+        return "\n".join(pii_info) + result
     
     async def handle_list_resources(self, message_id: int) -> Dict[str, Any]:
         """Handle resources/list request"""
