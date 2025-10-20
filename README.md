@@ -128,8 +128,55 @@ wss://54.91.86.239/mcp
 ```
 
 ### 🔑 **Authentication**
-- **Bearer Token:** `142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0`
-- **Usage:** Include in Authorization header for API or token field for MCP
+
+#### **API Authentication (REST)**
+```bash
+# HTTP Bearer Token in Authorization header
+Authorization: Bearer 142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0
+```
+
+#### **MCP Authentication (WebSocket) - 3 Methods**
+
+**Method 1: Query Parameter** ✅ **RECOMMENDED**
+```javascript
+// Easiest for most applications
+const ws = new WebSocket('wss://54.91.86.239/mcp?token=142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0');
+```
+
+**Method 2: WebSocket Headers**
+```javascript
+// For applications supporting WebSocket headers
+const ws = new WebSocket('wss://54.91.86.239/mcp', [], {
+  headers: {
+    'Authorization': 'Bearer 142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0'
+  }
+});
+```
+
+**Method 3: First Message Authentication**
+```javascript
+// For custom authentication flows
+const ws = new WebSocket('wss://54.91.86.239/mcp');
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "authenticate", 
+    "params": {
+      "token": "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0"
+    }
+  }));
+};
+```
+
+#### **For Testing Applications**
+- **URL Field:** `wss://54.91.86.239/mcp?token=142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0`
+- **Token Field:** Leave empty (token already in URL)
+
+**OR**
+
+- **URL Field:** `wss://54.91.86.239/mcp`  
+- **Token Field:** `142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0`
 
 ### ✨ **Production Features**
 - ✅ **24 Optimized Chunks** (400-800 tokens each)
@@ -202,41 +249,85 @@ curl -X POST "https://54.91.86.239/query" \\
   -k
 ```
 
-#### WebSocket MCP Connection (for AI Assistants)
+#### WebSocket MCP Connection Examples
+
+**Method 1: Query Parameter (Recommended)**
 ```javascript
-// Connect to MCP WebSocket server
+// Most compatible with testing tools
 const ws = new WebSocket('wss://54.91.86.239/mcp?token=142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0');
 
-// Initialize MCP protocol
-ws.send(JSON.stringify({
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "initialize",
-  "params": {
-    "protocolVersion": "2024-11-05",
-    "capabilities": {},
-    "clientInfo": {"name": "test-client", "version": "1.0.0"}
-  }
-}));
-
-// Use MCP tools
-ws.send(JSON.stringify({
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/call",
-  "params": {
-    "name": "query_attention_paper",
-    "arguments": {
-      "question": "What is the Transformer architecture?"
+ws.onopen = () => {
+  // Initialize MCP protocol
+  ws.send(JSON.stringify({
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {},
+      "clientInfo": {"name": "test-client", "version": "1.0.0"}
     }
+  }));
+};
+
+ws.onmessage = (event) => {
+  const response = JSON.parse(event.data);
+  if (response.id === 1) {
+    // Use MCP tools after initialization
+    ws.send(JSON.stringify({
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "tools/call",
+      "params": {
+        "name": "query_attention_paper",
+        "arguments": {
+          "question": "What is the Transformer architecture?"
+        }
+      }
+    }));
   }
-}));
+};
 ```
 
-#### UI Connection Settings
-For AI assistant UIs (like Claude Desktop alternatives):
-- **URL:** `wss://54.91.86.239/mcp`
-- **Token:** `142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0`
+**Method 2: Separate Token Field**
+```javascript
+// For applications with separate URL and token fields
+const ws = new WebSocket('wss://54.91.86.239/mcp');
+
+ws.onopen = () => {
+  // Authenticate first
+  ws.send(JSON.stringify({
+    "jsonrpc": "2.0",
+    "id": 0,
+    "method": "authenticate",
+    "params": {
+      "token": "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0"
+    }
+  }));
+};
+```
+
+#### Connection Settings for Testing Applications
+
+**Option A: Single URL Field**
+```
+URL: wss://54.91.86.239/mcp?token=142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0
+Token: [Leave Empty]
+```
+
+**Option B: Separate Fields**
+```
+URL: wss://54.91.86.239/mcp
+Token: 142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0
+```
+
+#### Troubleshooting MCP Connection
+
+**Common Issues:**
+- **HTTP 404:** Check URL spelling and `/mcp` endpoint
+- **Authentication Failed:** Verify token is correct and properly formatted
+- **Connection Refused:** Ensure using `wss://` (secure WebSocket)
+- **Empty Upgrade Header:** Normal response when testing with curl/browser
 
 ### Response Format (with Guardrails & PII Masking)
 
