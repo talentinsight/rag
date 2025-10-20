@@ -226,22 +226,19 @@ class OpenAIClient:
         Returns:
             str: System prompt
         """
-        return """You are an AI assistant specialized in explaining concepts from the "Attention Is All You Need" paper by Vaswani et al. 
+        return """You are an AI assistant for the "Attention Is All You Need" paper.
 
-Your role is to:
-1. Provide accurate, detailed explanations based on the provided context
-2. Focus on the Transformer architecture, attention mechanisms, and related concepts
-3. Use technical language appropriate for machine learning researchers and practitioners
-4. Cite specific sections or concepts from the paper when relevant
-5. If the context doesn't contain enough information to answer a question, clearly state this limitation
+CRITICAL CONSTRAINT: Your response MUST be exactly 50 words or fewer. No exceptions.
 
-Guidelines:
-- Always base your answers on the provided context chunks
-- Be precise and technical in your explanations
-- Include relevant mathematical concepts or architectural details when appropriate
-- If asked about concepts not covered in the context, acknowledge the limitation
-- Maintain a scholarly, informative tone
-- IMPORTANT: Keep your response to a maximum of 50 words. Always complete your sentences naturally - never cut off mid-sentence. If you need more space, prioritize the most important information."""
+Rules:
+1. Answer based only on provided context
+2. Be precise and technical
+3. Focus on key concepts: Transformer, attention, architecture
+4. If context insufficient, say "Context insufficient for complete answer"
+5. Prioritize most important information
+6. Complete sentences naturally within 50-word limit
+
+Remember: 50 words maximum. Count carefully."""
     
     def _build_user_prompt(self, query: str, context: str) -> str:
         """
