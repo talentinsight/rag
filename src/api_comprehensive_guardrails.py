@@ -380,13 +380,14 @@ async def query_with_comprehensive_guardrails(
         )
         
         if not output_passed:
-            # Log but don't block - instead, sanitize response
+            # Log output guardrails failures but don't filter response
             failed_output_checks = [r for r in output_results if not r.passed]
-            logger.warning(f"Output guardrails failed: {[r.reason for r in failed_output_checks]}")
+            logger.warning(f"Output guardrails detected issues: {[r.reason for r in failed_output_checks]}")
             
-            # For output failures, we can sanitize instead of blocking
-            if any(r.category in ["adult_content", "profanity_filter", "pii_detection"] for r in failed_output_checks):
-                response["answer"] = "OUTPUT_FILTERED: Response modified for safety"
+            # Only filter if PII is detected in output (data leakage prevention)
+            if any(r.category == "pii_detection" and not r.passed for r in failed_output_checks):
+                response["answer"] = "OUTPUT_FILTERED: PII detected in response"
+            # For other issues (adult, profanity, toxicity): just log, don't filter
         
         # Calculate processing time
         processing_time = (datetime.now() - start_time).total_seconds() * 1000
