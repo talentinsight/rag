@@ -13,6 +13,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 import logging
 
+logger = logging.getLogger(__name__)
+
 # Import advanced PII detector
 try:
     from advanced_pii_detector import AdvancedPIIDetector, PIIDetectionMethod
@@ -20,8 +22,6 @@ try:
 except ImportError as e:
     ADVANCED_PII_AVAILABLE = False
     logger.warning(f"Advanced PII detector not available: {e}")
-
-logger = logging.getLogger(__name__)
 
 @dataclass
 class GuardrailResult:
