@@ -41,8 +41,12 @@ sudo cp -r src src_backup_$(date +%Y%m%d_%H%M%S) 2>/dev/null || echo "No previou
 # Extract new version
 tar -xzf /tmp/rag-deployment.tar.gz
 
-# Update environment
-source rag_env/bin/activate 2>/dev/null || source rag_env_38/bin/activate
+# Update environment - use Python 3.13
+source rag_env/bin/activate 2>/dev/null || {
+    echo "Creating Python 3.13 virtual environment..."
+    python3.13 -m venv rag_env || python3 -m venv rag_env
+    source rag_env/bin/activate
+}
 pip install -r requirements.txt --upgrade
 
 # Stop service before updating
