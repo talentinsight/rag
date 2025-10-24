@@ -384,9 +384,10 @@ async def query_with_comprehensive_guardrails(
             failed_output_checks = [r for r in output_results if not r.passed]
             logger.warning(f"Output guardrails detected issues: {[r.reason for r in failed_output_checks]}")
             
-            # Only filter if PII is detected in output (data leakage prevention)
-            if any(r.category == "pii_detection" and not r.passed for r in failed_output_checks):
-                response["answer"] = "OUTPUT_FILTERED: PII detected in response"
+            # DISABLED: No output filtering - we only block input PII, not output content
+            # LLM responses should not be filtered for PII as they are educational content
+            # if any(r.category == "pii_detection" and not r.passed for r in failed_output_checks):
+            #     response["answer"] = "OUTPUT_FILTERED: PII detected in response"
             # For other issues (adult, profanity, toxicity): just log, don't filter
         
         # Calculate processing time
