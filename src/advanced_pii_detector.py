@@ -21,7 +21,6 @@ except ImportError:
 
 try:
     # First check if torch is available
-    import torch
     # Only then import transformers to avoid warnings
     from transformers import pipeline
     TRANSFORMERS_AVAILABLE = True

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 
 import pdfplumber
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

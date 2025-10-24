@@ -9,9 +9,9 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 
-from .weaviate_client import WeaviateManager
-from .mock_vector_store import MockVectorStore
-from .semantic_chunker import TextChunk
+from weaviate_client import WeaviateManager
+from mock_vector_store import MockVectorStore
+from semantic_chunker import TextChunk
 
 # Load environment variables
 load_dotenv()
@@ -189,6 +189,15 @@ class VectorStoreManager:
         
         stats["store_type"] = self.store_type
         return stats
+    
+    def get_collection_stats(self) -> Dict[str, Any]:
+        """
+        Get collection statistics (alias for get_stats for compatibility)
+        
+        Returns:
+            Dict: Vector store statistics
+        """
+        return self.get_stats()
     
     def save_mock_store(self, filepath: str) -> bool:
         """
