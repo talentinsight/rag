@@ -18,8 +18,8 @@ import asyncio
 import logging
 
 # Import our comprehensive guardrails system
-from comprehensive_guardrails import ComprehensiveGuardrails, GuardrailResult
-from rag_pipeline import RAGPipeline
+from .comprehensive_guardrails import ComprehensiveGuardrails, GuardrailResult
+from .rag_pipeline import RAGPipeline
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
