@@ -341,51 +341,50 @@ async def query_with_comprehensive_guardrails(
             request.client_id
         )
         
-        if not input_passed:
-            # Instead of blocking, provide a safe response
-            failed_checks = [r for r in input_results if not r.passed]
-            critical_failures = [r for r in failed_checks if r.severity == "critical"]
-            
-            # Only PII should block - others are detection only now
-            failed_categories = [r.category for r in failed_checks]
-            
-            if "pii_detection" in failed_categories:
-                safe_answer = "BLOCKED: Personal information detected in request"
-            else:
-                # This should not happen with PII-only filtering
-                safe_answer = "BLOCKED: Safety guidelines violation"
-            
-            # Calculate processing time
-            processing_time = (datetime.now() - start_time).total_seconds() * 1000
-            
-            # Calculate safety score
-            safety_score = _calculate_safety_score(input_results, [])
-            
-            # Return safe response instead of error
-            return QueryResponse(
-                answer=safe_answer,
-                question=request.question,
-                pii_masked_input=pii_masked_input,
-                chunks_found=0,
-                sources=[],
-                model="safety-filter",
-                total_tokens=0,
-                processing_time_ms=processing_time,
-                guardrails_passed=False,
-                input_guardrails=_convert_guardrail_results(input_results),
-                output_guardrails=[],
-                safety_score=safety_score
-            )
+        # Check if PII was detected
+        pii_detected = any(r.category == "pii_detection" and not r.passed for r in input_results)
         
-        # Process with RAG pipeline
-        logger.info("Input guardrails passed, processing with RAG pipeline")
+        # Determine which query to use for RAG
+        query_for_rag = pii_masked_input if pii_detected else request.question
+        
+        # Log PII detection and masking
+        if pii_detected:
+            logger.info(f"🔒 PII detected and masked: '{request.question}' -> '{query_for_rag}'")
+        
+        # Check for non-PII blocking conditions (should be rare with PII-only filtering)
+        non_pii_failures = [r for r in input_results if not r.passed and r.category != "pii_detection"]
+        if non_pii_failures:
+            # Only block for critical non-PII failures
+            critical_failures = [r for r in non_pii_failures if r.severity == "critical"]
+            if critical_failures:
+                safe_answer = "BLOCKED: Safety guidelines violation"
+                processing_time = (datetime.now() - start_time).total_seconds() * 1000
+                safety_score = _calculate_safety_score(input_results, [])
+                
+                return QueryResponse(
+                    answer=safe_answer,
+                    question=request.question,
+                    pii_masked_input=pii_masked_input,
+                    chunks_found=0,
+                    sources=[],
+                    model="safety-filter",
+                    total_tokens=0,
+                    processing_time_ms=processing_time,
+                    guardrails_passed=False,
+                    input_guardrails=_convert_guardrail_results(input_results),
+                    output_guardrails=[],
+                    safety_score=safety_score
+                )
+        
+        # Process with RAG pipeline using masked query if PII was detected
+        logger.info(f"Processing with RAG pipeline using query: '{query_for_rag}'")
         pipeline = get_rag_pipeline()
         
-        # Generate response
+        # Generate response using the appropriate query (masked if PII detected)
         response = await asyncio.get_event_loop().run_in_executor(
             None,
             pipeline.query,
-            request.question,
+            query_for_rag,  # Use masked query instead of original
             request.num_chunks,
             request.min_score
         )

@@ -180,6 +180,78 @@ class ComprehensiveGuardrails:
         # Fallback to original regex-based detection
         return self._check_pii_detection_regex(text)
     
+    def mask_pii(self, text: str) -> str:
+        """
+        Mask PII in text while preserving context for RAG processing
+        
+        Args:
+            text: Input text that may contain PII
+            
+        Returns:
+            str: Text with PII masked using placeholders
+        """
+        masked_text = text
+        
+        # Use advanced PII detector if available
+        if self.advanced_pii_detector:
+            try:
+                loop = None
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                advanced_result = loop.run_until_complete(
+                    self.advanced_pii_detector.detect_pii(text)
+                )
+                
+                if advanced_result.passed:  # No PII detected
+                    return text
+                
+                # Mask detected PII entities
+                entities = advanced_result.metadata.get("entities", [])
+                for entity in entities:
+                    entity_text = entity.get("text", "")
+                    entity_type = entity.get("type", "PII")
+                    if entity_text:
+                        masked_text = masked_text.replace(entity_text, f"[{entity_type}]")
+                
+                return masked_text
+                
+            except Exception as e:
+                logger.warning(f"Advanced PII masking failed, falling back to regex: {e}")
+        
+        # Fallback to regex-based masking
+        return self._mask_pii_regex(text)
+    
+    def _mask_pii_regex(self, text: str) -> str:
+        """
+        Regex-based PII masking fallback
+        
+        Args:
+            text: Input text
+            
+        Returns:
+            str: Text with PII masked
+        """
+        masked_text = text
+        
+        # Mask different PII types
+        masked_text = re.sub(self.pii_patterns["email"], "[EMAIL]", masked_text)
+        masked_text = re.sub(self.pii_patterns["phone"], "[PHONE]", masked_text)
+        masked_text = re.sub(self.pii_patterns["credit_card"], "[CREDIT_CARD]", masked_text)
+        masked_text = re.sub(self.pii_patterns["ssn"], "[SSN]", masked_text)
+        masked_text = re.sub(self.pii_patterns["api_key"], "[API_KEY]", masked_text)
+        
+        # Mask names (more carefully to avoid false positives)
+        name_match = re.search(self.pii_patterns["name"], masked_text)
+        if name_match:
+            full_name = name_match.group(1) if name_match.groups() else name_match.group(0)
+            masked_text = masked_text.replace(full_name, "[PERSON]")
+        
+        return masked_text
+    
     def _check_pii_detection_regex(self, text: str) -> GuardrailResult:
         """Original regex-based PII detection as fallback"""
         pii_found = []
