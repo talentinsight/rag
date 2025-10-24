@@ -16,6 +16,18 @@ numpy>=1.21.0
 pandas>=1.5.0
 scikit-learn>=1.2.0
 transformers>=4.21.0
+torch>=2.0.0
+
+# Advanced PII Detection (optional but recommended)
+# Microsoft Presidio for enterprise-grade PII detection
+presidio-analyzer>=2.2.0
+presidio-anonymizer>=2.2.0
+
+# spaCy for NLP (required by Presidio)
+spacy>=3.6.0
+
+# Additional ML models for better PII detection
+# Note: Install spaCy model with: python -m spacy download en_core_web_sm
 
 # HTTP and networking
 requests>=2.28.0
