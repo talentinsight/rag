@@ -15,10 +15,11 @@ import logging
 
 # Import advanced PII detector
 try:
-    from .advanced_pii_detector import AdvancedPIIDetector, PIIDetectionMethod
+    from advanced_pii_detector import AdvancedPIIDetector, PIIDetectionMethod
     ADVANCED_PII_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     ADVANCED_PII_AVAILABLE = False
+    logger.warning(f"Advanced PII detector not available: {e}")
 
 logger = logging.getLogger(__name__)
 

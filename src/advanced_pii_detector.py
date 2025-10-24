@@ -20,9 +20,13 @@ except ImportError:
     PRESIDIO_AVAILABLE = False
 
 try:
+    # First check if torch is available
+    import torch
+    # Only then import transformers to avoid warnings
     from transformers import pipeline
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
+    # PyTorch not available, skip transformers entirely
     TRANSFORMERS_AVAILABLE = False
 
 try:
