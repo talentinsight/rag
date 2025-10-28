@@ -118,6 +118,22 @@ class QueryResponse(BaseModel):
     output_guardrails: List[GuardrailInfo] = Field(default=[], description="Output guardrail results")
     safety_score: float = Field(..., description="Overall safety score (0-1)")
 
+class GuardrailsQueryResponse(BaseModel):
+    """Guardrails-focused query response model (no chunks/sources)"""
+    answer: str = Field(..., description="Generated answer")
+    question: str = Field(..., description="Original question")
+    pii_masked_input: str = Field(..., description="Input with PII masked for evaluation")
+    model: Optional[str] = Field(None, description="Model used for generation")
+    total_tokens: Optional[int] = Field(None, description="Total tokens used")
+    processing_time_ms: float = Field(..., description="Processing time in milliseconds")
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
+    
+    # Guardrails information
+    guardrails_passed: bool = Field(..., description="Whether all guardrails passed")
+    input_guardrails: List[GuardrailInfo] = Field(default=[], description="Input guardrail results")
+    output_guardrails: List[GuardrailInfo] = Field(default=[], description="Output guardrail results")
+    safety_score: float = Field(..., description="Overall safety score (0-1)")
+
 class HealthResponse(BaseModel):
     """Health check response"""
     status: str = Field(..., description="Service status")
@@ -442,6 +458,107 @@ async def query_with_comprehensive_guardrails(
     except Exception as e:
         logger.error(f"Query processing failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Query processing failed: {str(e)}")
+
+@app.post("/query-guardrails", response_model=GuardrailsQueryResponse)
+async def query_guardrails_focused(
+    request: QueryRequest,
+    _: bool = Depends(verify_token)
+):
+    """
+    Process query with comprehensive guardrails protection (no chunks/sources in response)
+    Designed for Guardrails and Red Team testing
+    """
+    start_time = datetime.now()
+    
+    try:
+        # Generate PII masked input for evaluation
+        pii_masked_input = guardrails.mask_pii(request.question)
+        
+        # Input guardrails check (PII filtering only)
+        logger.info(f"Running input guardrails (PII filtering only) for client: {request.client_id}")
+        input_passed, input_results = guardrails.check_input_guardrails_with_pii_filtering(
+            request.question, 
+            request.client_id
+        )
+        
+        # Check if PII was detected
+        pii_detected = any(r.category == "pii_detection" and not r.passed for r in input_results)
+        
+        # Determine which query to use for RAG
+        query_for_rag = pii_masked_input if pii_detected else request.question
+        
+        # Log PII detection and masking
+        if pii_detected:
+            logger.info(f"🔒 PII detected and masked: '{request.question}' -> '{query_for_rag}'")
+        
+        # Check for non-PII blocking conditions (should be rare with PII-only filtering)
+        non_pii_failures = [r for r in input_results if not r.passed and r.category != "pii_detection"]
+        if non_pii_failures:
+            # Only block for critical non-PII failures
+            critical_failures = [r for r in non_pii_failures if r.severity == "critical"]
+            if critical_failures:
+                logger.warning(f"Blocking request due to critical failures: {[r.reason for r in critical_failures]}")
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Request blocked: {', '.join([r.reason for r in critical_failures])}"
+                )
+        
+        # Get RAG pipeline
+        rag_pipeline = get_rag_pipeline()
+        
+        # Execute RAG query with masked input if PII was detected
+        logger.info(f"Executing RAG query with input: '{query_for_rag[:100]}...'")
+        response = rag_pipeline.query(
+            query_for_rag,
+            num_chunks=request.num_chunks,
+            min_score=request.min_score
+        )
+        
+        # Prepare response data for output guardrails
+        response_data = {
+            "answer": response.get("answer", ""),
+            "question": request.question,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Output guardrails check
+        logger.info("Running output guardrails")
+        output_passed, output_results = guardrails.check_output_guardrails(
+            response_data,
+            start_time
+        )
+        
+        if not output_passed:
+            # Log output guardrails failures but don't filter response
+            failed_output_checks = [r for r in output_results if not r.passed]
+            logger.warning(f"Output guardrails detected issues: {[r.reason for r in failed_output_checks]}")
+        
+        # Calculate processing time
+        processing_time = (datetime.now() - start_time).total_seconds() * 1000
+        
+        # Calculate safety score
+        safety_score = _calculate_safety_score(input_results, output_results)
+        
+        # Build guardrails-focused response (NO chunks/sources)
+        return GuardrailsQueryResponse(
+            answer=response["answer"],
+            question=request.question,
+            pii_masked_input=pii_masked_input,
+            model=response.get("model"),
+            total_tokens=response.get("total_tokens"),
+            processing_time_ms=processing_time,
+            guardrails_passed=input_passed and output_passed,
+            input_guardrails=_convert_guardrail_results(input_results),
+            output_guardrails=_convert_guardrail_results(output_results),
+            safety_score=safety_score
+        )
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions (like guardrails blocks)
+        raise
+    except Exception as e:
+        logger.error(f"Guardrails query processing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Guardrails query processing failed: {str(e)}")
 
 @app.get("/test-guardrails")
 async def test_guardrails_endpoint(_: bool = Depends(verify_token)):
