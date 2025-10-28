@@ -9,11 +9,16 @@ A complete production-ready Retrieval-Augmented Generation (RAG) system for quer
 - **🤖 OpenAI Integration**: GPT-4 Turbo with 50-word response limit for concise answers
 - **⚡ FastAPI REST API**: Production-ready web service with comprehensive guardrails
 - **🛡️ Comprehensive Guardrails**: Advanced safety system with PII masking
-  - Input/Output content filtering
-  - PII detection and masking (email, phone, SSN, credit cards, API keys)
+  - **33+ PII Patterns**: Email, phone, SSN, credit cards, API keys, JWT tokens, AWS keys, medical records
+  - **Dynamic Detection**: Context-aware patterns, locale-specific enhancements
+  - **Multi-Method PII**: Presidio + spaCy + Regex + Hybrid detection
+  - **Real-time Analysis**: No hardcode, dynamic pattern generation
   - Rate limiting and abuse prevention
   - Toxicity and bias detection
-- **🔌 MCP Support**: Model Context Protocol integration for AI assistants
+- **🔌 Smart MCP Support**: Intelligent Model Context Protocol integration
+  - **🧠 Auto-Detection**: Automatically routes Guardrails vs RAG evaluation queries
+  - **Single URL**: One WebSocket endpoint handles everything intelligently
+  - **Dynamic Tools**: Reflection-based tool discovery (no hardcode)
   - **Local MCP**: stdio protocol for Claude Desktop
   - **WebSocket MCP**: Cloud-ready WebSocket protocol for testing tools
 - **☁️ AWS Deployment**: Production deployment with auto-scaling and monitoring
@@ -193,22 +198,50 @@ ws.onopen = () => {
 - `GET /` - Root endpoint with basic info
 - `GET /health` - Health check and system status  
 - `GET /stats` - Detailed system statistics
-- `POST /query` - **Main RAG endpoint** (50-word limit, PII masking, guardrails)
+- `POST /query` - **RAG Evaluation endpoint** (with chunks/sources, detailed analysis)
+- `POST /query-guardrails` - **🆕 Guardrails Testing endpoint** (no chunks/sources, security-focused)
 - `GET /guardrails-stats` - Guardrails system statistics
 - `POST /reset-stats` - Reset system statistics
 
 ### MCP Endpoints
 
-- `WS /mcp` - **WebSocket MCP endpoint** for AI assistants and testing tools
+- `WS /mcp` - **🧠 Smart WebSocket MCP endpoint** with auto-detection
 - **Local MCP**: Use `python start_mcp_server.py` for Claude Desktop integration
 
-### Available MCP Tools
+### 🧠 Smart MCP Features
 
-- `query_attention_paper` - Ask questions about the paper (50-word responses)
+#### **Auto-Detection System**
+The MCP server automatically determines query intent and routes appropriately:
+
+- **🛡️ Guardrails Testing**: PII, security tests, prompt injection → No chunks/sources
+- **📚 RAG Evaluation**: Technical questions, research queries → With chunks/sources
+
+#### **Single URL Usage**
+```javascript
+// Just send your question - MCP decides the rest!
+websocket.send({
+  "question": "My SSN is 123-45-6789"  // → Auto-routes to Guardrails mode
+});
+
+websocket.send({
+  "question": "What is attention mechanism?"  // → Auto-routes to RAG evaluation mode
+});
+```
+
+### Available MCP Tools (Dynamically Discovered)
+
+- `query_attention_paper` - RAG evaluation with chunks/sources (auto-selected for technical queries)
+- `query_guardrails_focused` - Security testing without chunks/sources (auto-selected for PII/security tests)
 - `search_paper_chunks` - Search for specific content in chunks
 - `get_rag_stats` - Get system statistics and performance metrics
+- `analyze_query_complexity` - Analyze query complexity before processing
+- `get_chunk_details` - Get detailed information about specific chunks
+- `compare_chunks` - Compare similarity between multiple chunks
+- `get_conversation_history` - Get session conversation history
 - `mask_pii_text` - Mask PII in provided text
 - `query_with_pii_masking` - Query with automatic PII masking
+
+**🔍 Dynamic Discovery**: Tools are discovered automatically via reflection - no hardcode!
 
 ### Query Examples
 
@@ -223,7 +256,7 @@ curl -X POST "http://localhost:8000/query" \\
   }'
 ```
 
-#### AWS Production Query (with Guardrails & PII Masking)
+#### AWS Production Query - RAG Evaluation (with chunks/sources)
 ```bash
 curl -X POST "https://54.91.86.239/query" \\
   -H "Content-Type: application/json" \\
@@ -233,6 +266,18 @@ curl -X POST "https://54.91.86.239/query" \\
     "num_chunks": 5,
     "min_score": 0.1,
     "client_id": "my_app"
+  }' \\
+  -k
+```
+
+#### 🆕 AWS Guardrails Testing Query (no chunks/sources)
+```bash
+curl -X POST "https://54.91.86.239/query-guardrails" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer 142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0" \\
+  -d '{
+    "question": "My SSN is 123-45-6789 and email is test@example.com",
+    "client_id": "security_test"
   }' \\
   -k
 ```
@@ -249,11 +294,11 @@ curl -X POST "https://54.91.86.239/query" \\
   -k
 ```
 
-#### WebSocket MCP Connection Examples
+#### 🧠 Smart WebSocket MCP Connection Examples
 
-**Method 1: Query Parameter (Recommended)**
+**Method 1: Smart Auto-Detection (Recommended)**
 ```javascript
-// Most compatible with testing tools
+// Connect once - MCP handles everything automatically!
 const ws = new WebSocket('wss://54.91.86.239/mcp?token=142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0');
 
 ws.onopen = () => {
@@ -265,7 +310,7 @@ ws.onopen = () => {
     "params": {
       "protocolVersion": "2024-11-05",
       "capabilities": {},
-      "clientInfo": {"name": "test-client", "version": "1.0.0"}
+      "clientInfo": {"name": "smart-client", "version": "2.0.0"}
     }
   }));
 };
@@ -273,13 +318,57 @@ ws.onopen = () => {
 ws.onmessage = (event) => {
   const response = JSON.parse(event.data);
   if (response.id === 1) {
-    // Use MCP tools after initialization
+    // 🧠 Smart queries - MCP auto-detects and routes!
+    
+    // This will auto-route to Guardrails mode (no chunks/sources)
+    ws.send(JSON.stringify({
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "query",
+      "params": {
+        "question": "My SSN is 123-45-6789"  // Auto-detected as security test
+      }
+    }));
+    
+    // This will auto-route to RAG evaluation mode (with chunks/sources)
+    ws.send(JSON.stringify({
+      "jsonrpc": "2.0", 
+      "id": 3,
+      "method": "query",
+      "params": {
+        "question": "What is the Transformer architecture?"  // Auto-detected as technical query
+      }
+    }));
+  }
+};
+```
+
+**Method 2: Manual Tool Selection (Traditional)**
+```javascript
+// If you prefer explicit tool selection
+ws.onmessage = (event) => {
+  const response = JSON.parse(event.data);
+  if (response.id === 1) {
+    // Explicit Guardrails testing
     ws.send(JSON.stringify({
       "jsonrpc": "2.0",
       "id": 2,
       "method": "tools/call",
       "params": {
-        "name": "query_attention_paper",
+        "name": "query_guardrails_focused",  // Explicit tool selection
+        "arguments": {
+          "question": "Test PII detection with SSN 123-45-6789"
+        }
+      }
+    }));
+    
+    // Explicit RAG evaluation
+    ws.send(JSON.stringify({
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "tools/call", 
+      "params": {
+        "name": "query_attention_paper",  // Explicit tool selection
         "arguments": {
           "question": "What is the Transformer architecture?"
         }
@@ -454,6 +543,46 @@ rag/
 ├── AWS_DEPLOYMENT.md          # AWS deployment guide
 └── README.md                   # This file
 ```
+
+## 🆕 What's New - Dynamic System
+
+### 🚀 **Major Update: Complete Dynamic System**
+
+**🎯 ZERO HARDCODE, ZERO FALLBACK, ZERO MOCK**
+
+#### **🧠 Smart MCP Auto-Detection**
+- **Intelligent Routing**: Automatically detects Guardrails vs RAG evaluation queries
+- **Single URL**: One WebSocket endpoint handles everything (`wss://54.91.86.239/mcp`)
+- **Context Analysis**: Real-time pattern analysis using guardrails system
+- **Dynamic Response**: Adapts response format based on query type
+
+#### **🛡️ Enhanced Guardrails (33+ PII Patterns)**
+- **Multi-Method Detection**: Presidio + spaCy + Regex + Hybrid
+- **Dynamic Patterns**: Context-aware, locale-specific enhancements
+- **Real-time Analysis**: No hardcode lists, dynamic pattern generation
+- **Comprehensive Coverage**: Financial, Medical, Technical, Network identifiers
+
+#### **🔍 Dynamic Tool Discovery**
+- **Reflection-Based**: Tools discovered automatically via method inspection
+- **No Hardcode**: Zero hardcoded tool lists or routing logic
+- **Adaptive**: System adapts to new tools without code changes
+- **Schema Generation**: Dynamic input schemas based on method signatures
+
+#### **📊 Usage Comparison**
+
+| Feature | Before | After |
+|---------|--------|-------|
+| **MCP Tools** | Hardcoded list | Dynamic discovery (10+ tools) |
+| **Query Routing** | Manual endpoint selection | Auto-detection |
+| **PII Patterns** | Basic regex (5 patterns) | Multi-method (33+ patterns) |
+| **Tool Selection** | Client decides | MCP decides intelligently |
+| **Pattern Updates** | Code changes required | Runtime adaptation |
+
+#### **🎯 Benefits**
+- **Simplified Integration**: Single URL for all use cases
+- **Enhanced Security**: 33+ PII patterns with AI detection
+- **Zero Maintenance**: No hardcode to update
+- **Future-Proof**: Automatically adapts to new features
 
 ## 🔧 Configuration
 
