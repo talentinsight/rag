@@ -81,8 +81,8 @@ python rag_pipeline.py
 # Method 1: Using the startup script
 python start_server.py
 
-# Method 2: Direct execution
-cd src && python api.py
+# Method 2: Direct execution (with comprehensive guardrails)
+cd src && python api_comprehensive_guardrails.py
 ```
 
 The API will be available at:
@@ -140,48 +140,21 @@ wss://54.91.86.239/mcp
 Authorization: Bearer 142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0
 ```
 
-#### **MCP Authentication (WebSocket) - 3 Methods**
+#### **MCP Authentication (WebSocket)**
 
-**Method 1: Query Parameter** ✅ **RECOMMENDED**
+**🧠 Smart Connection (Recommended)**
 ```javascript
-// Easiest for most applications
+// Single URL with token - MCP handles auto-detection
 const ws = new WebSocket('wss://54.91.86.239/mcp?token=142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0');
 ```
 
-**Method 2: WebSocket Headers**
-```javascript
-// For applications supporting WebSocket headers
-const ws = new WebSocket('wss://54.91.86.239/mcp', [], {
-  headers: {
-    'Authorization': 'Bearer 142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0'
-  }
-});
-```
-
-**Method 3: First Message Authentication**
-```javascript
-// For custom authentication flows
-const ws = new WebSocket('wss://54.91.86.239/mcp');
-ws.onopen = () => {
-  ws.send(JSON.stringify({
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "authenticate", 
-    "params": {
-      "token": "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0"
-    }
-  }));
-};
-```
-
 #### **For Testing Applications**
-- **URL Field:** `wss://54.91.86.239/mcp?token=142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0`
-- **Token Field:** Leave empty (token already in URL)
+- **URL:** `wss://54.91.86.239/mcp?token=142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0`
+- **Token:** Leave empty (already in URL)
 
-**OR**
-
-- **URL Field:** `wss://54.91.86.239/mcp`  
-- **Token Field:** `142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0`
+**Alternative (if app has separate token field):**
+- **URL:** `wss://54.91.86.239/mcp`  
+- **Token:** `142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0`
 
 ### ✨ **Production Features**
 - ✅ **24 Optimized Chunks** (400-800 tokens each)
@@ -378,51 +351,20 @@ ws.onmessage = (event) => {
 };
 ```
 
-**Method 2: Separate Token Field**
-```javascript
-// For applications with separate URL and token fields
-const ws = new WebSocket('wss://54.91.86.239/mcp');
-
-ws.onopen = () => {
-  // Authenticate first
-  ws.send(JSON.stringify({
-    "jsonrpc": "2.0",
-    "id": 0,
-    "method": "authenticate",
-    "params": {
-      "token": "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0"
-    }
-  }));
-};
-```
-
-#### Connection Settings for Testing Applications
-
-**Option A: Single URL Field**
-```
-URL: wss://54.91.86.239/mcp?token=142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0
-Token: [Leave Empty]
-```
-
-**Option B: Separate Fields**
-```
-URL: wss://54.91.86.239/mcp
-Token: 142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0
-```
-
-#### Troubleshooting MCP Connection
+#### 🔧 **Connection Troubleshooting**
 
 **Common Issues:**
 - **HTTP 404:** Check URL spelling and `/mcp` endpoint
 - **Authentication Failed:** Verify token is correct and properly formatted
 - **Connection Refused:** Ensure using `wss://` (secure WebSocket)
-- **Empty Upgrade Header:** Normal response when testing with curl/browser
+- **SSL Certificate:** Use `wss://` for secure connection
 
-### Response Format (with Guardrails & PII Masking)
+### 📊 Response Formats
 
+#### **RAG Evaluation Response** (`/query` - with chunks/sources)
 ```json
 {
-  "answer": "The Transformer is a neural network architecture that relies entirely on attention mechanisms, eliminating recurrence and convolutions. It uses multi-head self-attention to process sequences in parallel, achieving better performance and faster training than traditional RNN-based models.",
+  "answer": "The Transformer is a neural network architecture that relies entirely on attention mechanisms...",
   "question": "What is the Transformer architecture?",
   "pii_masked_input": "What is the Transformer architecture?",
   "chunks_found": 5,
@@ -438,14 +380,35 @@ Token: 142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0
   "total_tokens": 1250,
   "processing_time_ms": 1500.5,
   "guardrails_passed": true,
-  "input_guardrails": [
-    {"category": "pii_detection", "passed": true, "confidence": 0.99}
-  ],
-  "output_guardrails": [
-    {"category": "content_safety", "passed": true, "confidence": 0.98}
-  ],
+  "input_guardrails": [...],
+  "output_guardrails": [...],
   "safety_score": 0.95,
-  "timestamp": "2025-10-20T14:46:15.123456"
+  "timestamp": "2025-10-27T14:46:15.123456"
+}
+```
+
+#### **Guardrails Testing Response** (`/query-guardrails` - no chunks/sources)
+```json
+{
+  "answer": "BLOCKED: PII detected in request",
+  "question": "My SSN is 123-45-6789",
+  "pii_masked_input": "My SSN is [SSN_MASKED]",
+  "model": "gpt-4-turbo-preview",
+  "total_tokens": 0,
+  "processing_time_ms": 245.8,
+  "guardrails_passed": false,
+  "input_guardrails": [
+    {
+      "category": "pii_detection",
+      "passed": false,
+      "score": 1.0,
+      "reason": "PII detected (hybrid): 1 instances of ssn",
+      "severity": "high"
+    }
+  ],
+  "output_guardrails": [...],
+  "safety_score": 0.12,
+  "timestamp": "2025-10-27T14:46:15.123456"
 }
 ```
 
@@ -521,17 +484,20 @@ rag/
 │   ├── vector_store_manager.py      # Unified vector store interface
 │   ├── openai_client.py             # OpenAI API integration (50-word limit)
 │   ├── rag_pipeline.py              # Complete RAG pipeline
-│   ├── comprehensive_guardrails.py  # Advanced safety system + PII masking
-│   ├── api_comprehensive_guardrails.py # Production FastAPI with guardrails
+│   ├── advanced_pii_detector.py     # 🆕 Enhanced PII detection (33+ patterns)
+│   ├── comprehensive_guardrails.py  # 🆕 Dynamic safety system (no hardcode)
+│   ├── api_comprehensive_guardrails.py # 🆕 Production FastAPI with dual endpoints
+│   ├── api.py                       # Legacy API (basic version)
 │   ├── mcp_server.py                # Local MCP server for Claude Desktop
-│   └── mcp_websocket_server.py      # WebSocket MCP server for AI assistants
+│   └── mcp_websocket_server.py      # 🆕 Smart WebSocket MCP server (auto-detection)
 ├── AttentionAllYouNeed.pdf      # Source document
 ├── requirements.txt             # Python dependencies
 ├── docker-compose.yml           # Weaviate setup
 ├── start_server.py             # Server startup script
 ├── start_mcp_server.py         # MCP server startup script
 ├── test_api.py                 # API testing script
-├── test_mcp.py                 # MCP server testing script
+├── test_mcp.py                 # Local MCP server testing script
+├── test_websocket_mcp.py       # 🆕 WebSocket MCP testing script (AWS)
 ├── mcp_config.json             # MCP client configuration
 ├── MCP_SETUP.md               # MCP setup guide
 ├── deploy_simple.sh            # AWS deployment script
@@ -544,11 +510,13 @@ rag/
 └── README.md                   # This file
 ```
 
-## 🆕 What's New - Dynamic System
+## 🆕 What's New - Dynamic System (Latest Update)
 
 ### 🚀 **Major Update: Complete Dynamic System**
 
 **🎯 ZERO HARDCODE, ZERO FALLBACK, ZERO MOCK**
+
+> **⚡ Key Change**: Single MCP URL now handles everything automatically! No need to choose endpoints - the system detects your intent and routes appropriately.
 
 #### **🧠 Smart MCP Auto-Detection**
 - **Intelligent Routing**: Automatically detects Guardrails vs RAG evaluation queries
