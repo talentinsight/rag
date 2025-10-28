@@ -160,27 +160,71 @@ async def test_production_websocket():
     try:
         logger.info(f"🌐 Testing production WebSocket MCP: {uri}")
         
-        async with websockets.connect(uri, ssl=True) as websocket:
+        import ssl
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        
+        async with websockets.connect(uri, ssl=ssl_context) as websocket:
             logger.info("✅ Connected to production WebSocket MCP server")
             
-            # Quick test - just initialize
-            init_message = {
+            # First, send authentication message
+            auth_message = {
                 "jsonrpc": "2.0",
-                "id": 1,
-                "method": "initialize",
+                "id": 0,
+                "method": "authenticate",
                 "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {"tools": {}},
-                    "clientInfo": {"name": "production-test-client", "version": "1.0.0"}
+                    "token": "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0"
                 }
             }
             
-            await websocket.send(json.dumps(init_message))
-            response = await websocket.recv()
-            init_response = json.loads(response)
+            logger.info("📤 Sending authentication...")
+            await websocket.send(json.dumps(auth_message))
             
-            server_name = init_response.get('result', {}).get('serverInfo', {}).get('name', 'Unknown')
-            logger.info(f"✅ Production MCP server: {server_name}")
+            auth_response = await websocket.recv()
+            auth_result = json.loads(auth_response)
+            
+            if auth_result.get('result', {}).get('authenticated'):
+                logger.info("✅ Authentication successful")
+                
+                # Now send initialize message
+                init_message = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {"tools": {}},
+                        "clientInfo": {"name": "production-test-client", "version": "1.0.0"}
+                    }
+                }
+                
+                await websocket.send(json.dumps(init_message))
+                response = await websocket.recv()
+                init_response = json.loads(response)
+                
+                server_name = init_response.get('result', {}).get('serverInfo', {}).get('name', 'Unknown')
+                logger.info(f"✅ Production MCP server: {server_name}")
+                
+                # Test tools list
+                list_tools_message = {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/list"
+                }
+                
+                await websocket.send(json.dumps(list_tools_message))
+                tools_response = await websocket.recv()
+                tools_result = json.loads(tools_response)
+                
+                tools = tools_result.get('result', {}).get('tools', [])
+                logger.info(f"📚 Available tools: {len(tools)}")
+                for tool in tools[:3]:  # Show first 3 tools
+                    logger.info(f"  - {tool.get('name')}: {tool.get('description', 'No description')[:50]}...")
+                    
+            else:
+                logger.error(f"❌ Authentication failed: {auth_result}")
+                return
             
     except Exception as e:
         logger.warning(f"⚠️ Production test skipped: {str(e)}")

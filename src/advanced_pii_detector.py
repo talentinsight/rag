@@ -132,24 +132,103 @@ class AdvancedPIIDetector:
         logger.info(f"Available detection methods: {[m.value for m in self.available_methods]}")
     
     def _init_regex_patterns(self):
-        """Initialize improved regex patterns"""
+        """Initialize comprehensive and dynamic PII patterns"""
         self.pii_patterns = {
-            # Enhanced patterns from your existing system
+            # Core PII patterns (enhanced and more robust)
             "email": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
-            "phone": r"\b\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b",
+            "phone": r"\b(?:\+?1[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b",
             "ssn": r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b",
             
-            # More sophisticated patterns
+            # Financial patterns (comprehensive)
             "credit_card": r"\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3[0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\b",
-            "api_key": r"\b(?:sk-|pk_|api[_-]?key[_-]?|token[_-]?)[A-Za-z0-9]{20,}\b",
-            "name": r"(?i)\b(?:my name is|i am|i'm|call me|name:|full name)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b",
+            "bank_account": r"\b[0-9]{8,17}\b",
+            "routing_number": r"\b[0-9]{9}\b",
             
-            # Additional patterns
-            "ip_address": r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b",
-            "mac_address": r"\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b",
+            # Identity patterns (enhanced)
+            "name": r"(?i)\b(?:my name is|i am|i'm|call me|name:|full name|first name|last name)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b",
             "passport": r"\b[A-Z]{1,2}[0-9]{6,9}\b",
-            "driver_license": r"\b[A-Z]{1,2}[0-9]{6,8}\b"
+            "driver_license": r"\b[A-Z]{1,2}[0-9]{6,8}\b",
+            "national_id": r"\b[A-Z]{2}[0-9]{6,12}\b",
+            
+            # Technical identifiers (expanded)
+            "api_key": r"\b(?:sk-|pk_|api[_-]?key[_-]?|token[_-]?|secret[_-]?)[A-Za-z0-9]{15,}\b",
+            "jwt_token": r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b",
+            "aws_key": r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b",
+            "github_token": r"\bgh[ps]_[A-Za-z0-9]{36}\b",
+            
+            # Network identifiers (comprehensive)
+            "ip_address": r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b",
+            "ipv6": r"\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b",
+            "mac_address": r"\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b",
+            "url_with_auth": r"\b(?:https?://)[^@\s]+:[^@\s]+@[^\s]+\b",
+            
+            # Medical/Health (new category)
+            "medical_record": r"\b(?:MRN|MR#|Medical Record)\s*:?\s*[A-Z0-9]{6,12}\b",
+            "insurance_id": r"\b[A-Z]{2,3}[0-9]{6,12}\b",
+            
+            # Address patterns (enhanced)
+            "address": r"(?i)\b(?:address|addr|location)\s*:?\s*[0-9]+\s+[A-Za-z\s]+(?:street|st|avenue|ave|road|rd|lane|ln|drive|dr|boulevard|blvd)\b",
+            "zip_code": r"\b[0-9]{5}(?:-[0-9]{4})?\b",
+            
+            # Date of birth patterns
+            "date_of_birth": r"(?i)\b(?:dob|date of birth|born on|birthday)\s*:?\s*[0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}\b",
+            
+            # Biometric identifiers
+            "fingerprint_id": r"\b[A-Z0-9]{8,16}(?:FP|PRINT)\b",
+            
+            # Custom dynamic patterns (context-aware)
+            "personal_identifier": r"(?i)\b(?:my|personal|private)\s+(?:id|identifier|number|code)\s*:?\s*[A-Za-z0-9]{6,}\b"
         }
+        
+        # Dynamic pattern enhancement based on context
+        self._enhance_patterns_dynamically()
+    
+    def _enhance_patterns_dynamically(self):
+        """Dynamically enhance PII patterns based on runtime context"""
+        # Add region-specific patterns dynamically
+        import locale
+        try:
+            current_locale = locale.getlocale()[0]
+            if current_locale and 'US' in current_locale:
+                # US-specific enhancements
+                self.pii_patterns["us_tax_id"] = r"\b[0-9]{2}-[0-9]{7}\b"
+                self.pii_patterns["us_phone_ext"] = r"\b[0-9]{3}-[0-9]{3}-[0-9]{4}\s*(?:ext|x)\s*[0-9]{1,5}\b"
+            elif current_locale and 'GB' in current_locale:
+                # UK-specific enhancements
+                self.pii_patterns["uk_nhs"] = r"\b[0-9]{3}\s*[0-9]{3}\s*[0-9]{4}\b"
+                self.pii_patterns["uk_postcode"] = r"\b[A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2}\b"
+        except:
+            pass  # Ignore locale detection errors
+        
+        # Add time-based dynamic patterns
+        from datetime import datetime
+        current_year = datetime.now().year
+        
+        # Dynamic year-based patterns for IDs that include years
+        self.pii_patterns["year_based_id"] = rf"\b(?:{current_year-100}|{current_year-50}|{current_year})[0-9]{{6,10}}\b"
+        
+        # Context-aware enhancement based on common PII indicators
+        self._add_contextual_patterns()
+    
+    def _add_contextual_patterns(self):
+        """Add contextual PII patterns based on common disclosure patterns"""
+        # Dynamic patterns for common PII disclosure contexts
+        contextual_patterns = {
+            "credential_disclosure": r"(?i)\b(?:username|user|login|password|pass|pwd)\s*[:=]\s*[A-Za-z0-9@._-]{3,}\b",
+            "contact_disclosure": r"(?i)\b(?:contact|reach me|call me|email me)\s*[:@]\s*[A-Za-z0-9@._-]+\b",
+            "emergency_contact": r"(?i)\b(?:emergency contact|in case of emergency|ice)\s*[:]\s*[A-Za-z0-9\s@._-]+\b",
+            "family_member": r"(?i)\b(?:my (?:mother|father|son|daughter|wife|husband|spouse))\s+(?:is|name is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b",
+            "work_info": r"(?i)\b(?:work at|employed by|company|employer)\s*[:]\s*([A-Za-z\s&.,]+)\b",
+            "location_sharing": r"(?i)\b(?:live at|address is|located at|my location)\s*[:]\s*([A-Za-z0-9\s,.-]+)\b"
+        }
+        
+        # Add contextual patterns to main patterns
+        self.pii_patterns.update(contextual_patterns)
+        
+        # Add dynamic number sequence detection
+        self.pii_patterns["suspicious_number_sequence"] = r"\b[0-9]{6,16}\b"  # Catch various ID formats
+        
+        logger.info(f"✅ Enhanced PII patterns: {len(self.pii_patterns)} total patterns loaded")
     
     async def detect_pii(self, text: str) -> PIIDetectionResult:
         """
