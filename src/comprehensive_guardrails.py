@@ -499,7 +499,7 @@ class ComprehensiveGuardrails:
         
         # Pattern 2: System access attempts
         if any(term in text_lower for term in ["system", "admin", "root", "sudo", "config"]):
-            if any(action in text_lower for term in ["access", "login", "connect", "open"]):
+            if any(action in text_lower for action in ["access", "login", "connect", "open"]):
                 leakage_indicators += 1
                 leakage_patterns.append("system_access")
         
