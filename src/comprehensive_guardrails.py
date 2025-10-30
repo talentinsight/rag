@@ -107,6 +107,10 @@ class ComprehensiveGuardrails:
             r"\b(razor|blade|pills to die|jump off)\b"
         ]
         
+        # Dynamic Toxicity Detection (NO HARDCODE!)
+        # Use linguistic analysis and context detection
+        self.toxicity_detection_enabled = True
+        
         # Dynamic Bias Detection (NO HARDCODE!)
         # Use pattern analysis instead of hardcode lists
         self.bias_detection_enabled = True
@@ -415,6 +419,85 @@ class ComprehensiveGuardrails:
             severity="low"
         )
 
+    def check_toxicity_filter(self, text: str) -> GuardrailResult:
+        """Dynamic toxicity detection using linguistic analysis (NO HARDCODE!)"""
+        if not self.toxicity_detection_enabled:
+            return GuardrailResult(
+                passed=True,
+                score=0.0,
+                reason="Toxicity detection disabled",
+                category="toxicity_filter",
+                severity="low"
+            )
+        
+        # Dynamic toxicity analysis using existing guardrails
+        toxicity_score = 0.0
+        toxicity_indicators = []
+        
+        # Check if adult content detection flags aggressive language
+        adult_result = self.check_adult_content(text)
+        if not adult_result.passed:
+            toxicity_score += 0.3
+            toxicity_indicators.append("adult_content")
+        
+        # Check if profanity filter detects offensive language
+        profanity_result = self.check_profanity_filter(text)
+        if not profanity_result.passed:
+            toxicity_score += 0.4
+            toxicity_indicators.append("profanity")
+        
+        # Check if bias detection finds discriminatory language
+        bias_result = self.check_bias_detection(text)
+        if not bias_result.passed:
+            toxicity_score += 0.3
+            toxicity_indicators.append("bias")
+        
+        # Dynamic linguistic analysis for aggressive tone
+        text_lower = text.lower()
+        word_count = len(text_lower.split())
+        
+        # Analyze sentence structure for aggressive patterns
+        if word_count > 0:
+            # Check for excessive capitalization (shouting)
+            caps_ratio = sum(1 for c in text if c.isupper()) / len(text) if text else 0
+            if caps_ratio > 0.3:
+                toxicity_score += 0.2
+                toxicity_indicators.append("aggressive_tone")
+            
+            # Check for multiple exclamation marks
+            if text.count('!') > 2:
+                toxicity_score += 0.1
+                toxicity_indicators.append("excessive_emphasis")
+        
+        # Determine result based on dynamic analysis
+        if toxicity_score >= 0.3:
+            severity = "high" if toxicity_score >= 0.7 else "medium"
+            return GuardrailResult(
+                passed=False,
+                score=min(1.0, toxicity_score),
+                reason=f"Toxic content detected through dynamic analysis: {', '.join(toxicity_indicators)}",
+                category="toxicity_filter",
+                severity=severity,
+                metadata={
+                    "toxicity_score": toxicity_score,
+                    "indicators": toxicity_indicators,
+                    "analysis_method": "dynamic_linguistic",
+                    "intervention_recommended": toxicity_score >= 0.7
+                }
+            )
+        
+        return GuardrailResult(
+            passed=True,
+            score=toxicity_score,
+            reason="No significant toxicity detected through dynamic analysis",
+            category="toxicity_filter",
+            severity="low",
+            metadata={
+                "toxicity_score": toxicity_score,
+                "analysis_method": "dynamic_linguistic"
+            }
+        )
+
     def check_bias_detection(self, text: str) -> GuardrailResult:
         """Dynamic bias and fairness detection (NO HARDCODE!)"""
         if not self.bias_detection_enabled:
@@ -677,6 +760,7 @@ class ComprehensiveGuardrails:
         results.append(self.check_rate_limits(client_id))
         results.append(self.check_self_harm_detection(text))
         results.append(self.check_pii_detection(text))
+        results.append(self.check_toxicity_filter(text))
         results.append(self.check_data_leakage_prevention(text))
         results.append(self.check_input_sanitation(text))
         
@@ -704,6 +788,7 @@ class ComprehensiveGuardrails:
         results.append(self.check_rate_limits(client_id))
         results.append(self.check_pii_detection(text))  # ONLY PII blocks requests
         results.append(self.check_self_harm_detection(text))  # Critical safety check
+        results.append(self.check_toxicity_filter(text))  # Comprehensive toxicity detection
         results.append(self.check_data_leakage_prevention(text))
         results.append(self.check_input_sanitation(text))
         
