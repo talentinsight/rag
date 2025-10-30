@@ -703,6 +703,7 @@ class ComprehensiveGuardrails:
         # Critical checks that can block requests
         results.append(self.check_rate_limits(client_id))
         results.append(self.check_pii_detection(text))  # ONLY PII blocks requests
+        results.append(self.check_self_harm_detection(text))  # Critical safety check
         results.append(self.check_data_leakage_prevention(text))
         results.append(self.check_input_sanitation(text))
         
