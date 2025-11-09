@@ -26,12 +26,19 @@ async def test_websocket_mcp():
             logger.info("✅ Connected to WebSocket MCP server")
             
             # Test 1: Authenticate first
+            # Get token from environment variable
+            import os
+            bearer_token = os.getenv("BEARER_TOKEN")
+            if not bearer_token:
+                logger.error("BEARER_TOKEN environment variable not set!")
+                return
+            
             auth_message = {
                 "jsonrpc": "2.0",
                 "id": 0,
                 "method": "authenticate",
                 "params": {
-                    "token": "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0"
+                    "token": bearer_token
                 }
             }
             
@@ -169,12 +176,18 @@ async def test_production_websocket():
             logger.info("✅ Connected to production WebSocket MCP server")
             
             # First, send authentication message
+            import os
+            bearer_token = os.getenv("BEARER_TOKEN")
+            if not bearer_token:
+                logger.error("BEARER_TOKEN environment variable not set!")
+                return
+            
             auth_message = {
                 "jsonrpc": "2.0",
                 "id": 0,
                 "method": "authenticate",
                 "params": {
-                    "token": "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0"
+                    "token": bearer_token
                 }
             }
             

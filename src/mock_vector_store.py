@@ -240,71 +240,15 @@ class MockVectorStore:
 def main():
     """
     Test the mock vector store
+    Note: This is a test function. For production use, initialize with actual document chunks.
     """
-    # Initialize mock vector store
-    mock_store = MockVectorStore()
-    
-    try:
-        # Test with sample chunks
-        sample_chunks = [
-            {
-                "content": "Attention mechanisms allow neural networks to focus on relevant parts of the input.",
-                "chunk_id": "chunk_001",
-                "section_title": "Introduction",
-                "token_count": 12,
-                "start_char": 0,
-                "end_char": 80,
-            },
-            {
-                "content": "The Transformer architecture is based solely on attention mechanisms.",
-                "chunk_id": "chunk_002", 
-                "section_title": "Model Architecture",
-                "token_count": 10,
-                "start_char": 80,
-                "end_char": 150,
-            },
-            {
-                "content": "Multi-head attention allows the model to attend to different representation subspaces.",
-                "chunk_id": "chunk_003",
-                "section_title": "Multi-Head Attention", 
-                "token_count": 13,
-                "start_char": 150,
-                "end_char": 235,
-            }
-        ]
-        
-        # Add chunks
-        if mock_store.add_chunks(sample_chunks):
-            print("✅ Successfully added sample chunks")
-            
-            # Get stats
-            stats = mock_store.get_stats()
-            print("\\n=== Mock Vector Store Stats ===")
-            for key, value in stats.items():
-                print(f"{key}: {value}")
-            
-            # Test search
-            results = mock_store.search_similar("attention mechanisms", limit=3)
-            print(f"\\n=== Search Results for 'attention mechanisms' ===")
-            for i, result in enumerate(results, 1):
-                print(f"Result {i}:")
-                print(f"  Chunk ID: {result['chunk_id']}")
-                print(f"  Score: {result['score']:.3f}")
-                print(f"  Section: {result['section_title']}")
-                print(f"  Content: {result['content'][:80]}...")
-                print()
-            
-            # Test get by ID
-            chunk = mock_store.get_chunk_by_id("chunk_002")
-            if chunk:
-                print(f"=== Get Chunk by ID 'chunk_002' ===")
-                print(f"Content: {chunk['content']}")
-                print(f"Section: {chunk['section_title']}")
-        
-        print("\\n✅ Mock vector store test completed successfully!")
-        
-    except Exception as e:
-        logger.error(f"Test failed: {str(e)}")
+    logger.error("MockVectorStore main() is for testing only. Use proper document loading in production.")
+    logger.info("To use MockVectorStore properly:")
+    logger.info("  1. Initialize: store = MockVectorStore()")
+    logger.info("  2. Load chunks from actual documents using pdf_processor and semantic_chunker")
+    logger.info("  3. Add chunks: store.add_chunks(document_chunks)")
+    logger.info("  4. Search: results = store.search_similar(query, limit=5)")
+    raise NotImplementedError("Test function removed. Use proper document loading pipeline in production.")
 
 
 if __name__ == "__main__":

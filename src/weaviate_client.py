@@ -377,62 +377,17 @@ class WeaviateManager:
 def main():
     """
     Test the Weaviate client setup
+    Note: This is a test function. For production use, initialize with actual document chunks from RAG pipeline.
     """
-    # Initialize Weaviate manager
-    weaviate_manager = WeaviateManager()
-    
-    try:
-        # Connect to Weaviate
-        if not weaviate_manager.connect():
-            logger.error("Failed to connect to Weaviate. Make sure Docker container is running.")
-            return
-        
-        # Create schema
-        if not weaviate_manager.create_schema():
-            logger.error("Failed to create schema")
-            return
-        
-        # Get collection stats
-        stats = weaviate_manager.get_collection_stats()
-        print("\\n=== Weaviate Collection Stats ===")
-        for key, value in stats.items():
-            print(f"{key}: {value}")
-        
-        # Test with a sample chunk
-        sample_chunks = [
-            {
-                "content": "This is a test chunk about attention mechanisms in neural networks.",
-                "chunk_id": "test_chunk_001",
-                "section_title": "Test Section",
-                "chunk_type": "content",
-                "token_count": 12,
-                "start_char": 0,
-                "end_char": 70,
-                "source_file": "test.pdf",
-                "created_at": "2024-01-01T00:00:00Z"
-            }
-        ]
-        
-        # Add test chunk
-        if weaviate_manager.add_chunks(sample_chunks):
-            print("\\n✅ Successfully added test chunk")
-            
-            # Test search
-            results = weaviate_manager.search_similar("attention mechanisms", limit=3)
-            print(f"\\n=== Search Results ===")
-            for i, result in enumerate(results, 1):
-                print(f"Result {i}:")
-                print(f"  Chunk ID: {result['chunk_id']}")
-                print(f"  Score: {result['score']:.3f}")
-                print(f"  Content: {result['content'][:100]}...")
-        
-        print("\\n✅ Weaviate setup test completed successfully!")
-        
-    except Exception as e:
-        logger.error(f"Test failed: {str(e)}")
-    
-    finally:
-        weaviate_manager.close()
+    logger.error("WeaviateManager main() is for testing only. Use RAG pipeline for production.")
+    logger.info("To use WeaviateManager properly:")
+    logger.info("  1. Initialize: manager = WeaviateManager()")
+    logger.info("  2. Connect: manager.connect()")
+    logger.info("  3. Create schema: manager.create_schema()")
+    logger.info("  4. Load actual document chunks from pdf_processor and semantic_chunker")
+    logger.info("  5. Add chunks: manager.add_chunks(document_chunks)")
+    logger.info("  6. Search: results = manager.search_similar(query, limit=5)")
+    raise NotImplementedError("Test function removed. Use RAG pipeline with actual document chunks in production.")
 
 
 if __name__ == "__main__":

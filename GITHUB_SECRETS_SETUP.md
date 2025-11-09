@@ -29,7 +29,7 @@ Add each of these secrets one by one:
 
 #### 🌐 EC2_HOST
 - **Name**: `EC2_HOST`
-- **Value**: Your EC2 instance public IP address
+- **Value**: `54.91.86.239` (Your EC2 instance public IP address)
 - **Description**: Public IP address of your EC2 instance
 
 #### 🔑 EC2_SSH_KEY
@@ -44,9 +44,28 @@ cat ~/.ssh/rag-keypair.pem
 
 Copy the entire output including the BEGIN and END lines.
 
+#### 🔐 BEARER_TOKEN (⚠️ **CRITICAL - REQUIRED**)
+- **Name**: `BEARER_TOKEN`
+- **Value**: `142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0`
+- **Description**: API authentication token for RAG system
+- **⚠️ IMPORTANT**: This secret is REQUIRED for the RAG system to work!
+
+#### 🤖 OPENAI_API_KEY (⚠️ **CRITICAL - REQUIRED**)
+- **Name**: `OPENAI_API_KEY`
+- **Value**: Your OpenAI API key (starts with `sk-proj-...`)
+- **Description**: OpenAI API key for embeddings and LLM generation
+- **⚠️ IMPORTANT**: This secret is REQUIRED for the RAG system to work!
+- **How to get**: Login to https://platform.openai.com/api-keys and copy your key
+
 ## ✅ Verification
 
-After adding all secrets, you should see all four secrets listed in your repository settings.
+After adding all secrets, you should see **SIX (6)** secrets listed in your repository settings:
+1. ✅ AWS_ACCESS_KEY_ID
+2. ✅ AWS_SECRET_ACCESS_KEY
+3. ✅ EC2_HOST
+4. ✅ EC2_SSH_KEY
+5. ✅ **BEARER_TOKEN** (CRITICAL)
+6. ✅ **OPENAI_API_KEY** (CRITICAL)
 
 ## 🧪 Test the CI/CD Pipeline
 

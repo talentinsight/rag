@@ -27,7 +27,11 @@ logger = logging.getLogger(__name__)
 
 # Security
 security = HTTPBearer()
-BEARER_TOKEN = "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0"
+BEARER_TOKEN = os.getenv("BEARER_TOKEN")
+
+if not BEARER_TOKEN:
+    logger.error("BEARER_TOKEN environment variable is required!")
+    raise ValueError("BEARER_TOKEN must be set in environment variables")
 
 # Global RAG pipeline instance
 rag_pipeline: Optional[RAGPipeline] = None

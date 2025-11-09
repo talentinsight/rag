@@ -329,64 +329,15 @@ Please provide a comprehensive answer based on the context provided. If the cont
 def main():
     """
     Test the OpenAI client
+    Note: This is a test function. For production use, initialize with actual document chunks from RAG pipeline.
     """
-    try:
-        # Initialize client
-        openai_client = OpenAIClient()
-        
-        # Test connection
-        if not openai_client.test_connection():
-            logger.error("Failed to connect to OpenAI API")
-            return
-        
-        # Test with sample context chunks
-        sample_chunks = [
-            {
-                "content": "The Transformer, model architecture eschewing recurrence and instead relying entirely on an attention mechanism to draw global dependencies between input and output.",
-                "chunk_id": "chunk_001",
-                "section_title": "Abstract",
-                "score": 0.95
-            },
-            {
-                "content": "An attention function can be described as mapping a query and a set of key-value pairs to an output, where the query, keys, values, and output are all vectors.",
-                "chunk_id": "chunk_002", 
-                "section_title": "Attention",
-                "score": 0.87
-            }
-        ]
-        
-        # Test query
-        test_query = "What is the Transformer architecture and how does it work?"
-        
-        print("\\n=== Testing OpenAI Response Generation ===")
-        print(f"Query: {test_query}")
-        print("\\nGenerating response...")
-        
-        # Generate response
-        result = openai_client.generate_response(test_query, sample_chunks)
-        
-        print("\\n=== Response ===")
-        print(result["answer"])
-        
-        print("\\n=== Metadata ===")
-        print(f"Model: {result['model']}")
-        print(f"Total tokens: {result.get('total_tokens', 'N/A')}")
-        print(f"Context chunks used: {result['context_chunks_used']}")
-        print(f"Sources: {len(result['sources'])}")
-        
-        # Test embeddings
-        print("\\n=== Testing Embeddings ===")
-        test_texts = ["attention mechanism", "transformer architecture"]
-        embeddings = openai_client.generate_embeddings(test_texts)
-        
-        if embeddings:
-            print(f"Generated embeddings for {len(test_texts)} texts")
-            print(f"Embedding dimensions: {len(embeddings[0])}")
-        
-        print("\\n✅ OpenAI client test completed successfully!")
-        
-    except Exception as e:
-        logger.error(f"Test failed: {str(e)}")
+    logger.error("OpenAIClient main() is for testing only. Use RAG pipeline for production.")
+    logger.info("To use OpenAIClient properly:")
+    logger.info("  1. Initialize: client = OpenAIClient(api_key=your_key)")
+    logger.info("  2. Test connection: client.test_connection()")
+    logger.info("  3. Load actual document chunks from vector store")
+    logger.info("  4. Generate response: client.generate_response(query, actual_chunks)")
+    raise NotImplementedError("Test function removed. Use RAG pipeline with actual document chunks in production.")
 
 
 if __name__ == "__main__":

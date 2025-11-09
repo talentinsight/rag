@@ -12,7 +12,10 @@ from collections import defaultdict
 
 # Security
 security = HTTPBearer()
-BEARER_TOKEN = "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0"
+BEARER_TOKEN = os.getenv("BEARER_TOKEN")
+
+if not BEARER_TOKEN:
+    raise ValueError("BEARER_TOKEN environment variable is required!")
 
 # Simple Guardrails Implementation
 class GuardrailResult:
@@ -263,12 +266,12 @@ async def query(
             }
         )
     
-    # Simulate processing time (like a real RAG system)
-    import asyncio
-    await asyncio.sleep(0.5)  # Simulate some processing time
-    
-    # Generate response
-    answer = f"Based on the 'Attention Is All You Need' paper, regarding your question about '{request.question}': The Transformer architecture introduced in this paper revolutionized sequence-to-sequence modeling by relying entirely on attention mechanisms, eliminating the need for recurrence and convolutions. The key innovation is the multi-head self-attention mechanism that allows the model to attend to different positions of the input sequence simultaneously."
+    # This is a simple guardrails API without actual RAG implementation
+    # For full RAG functionality, use api_comprehensive_guardrails.py or api_full_rag.py
+    raise HTTPException(
+        status_code=501,
+        detail="This endpoint requires full RAG implementation. Please use /api_comprehensive_guardrails or /api_full_rag endpoints."
+    )
     
     # Calculate processing time
     processing_time = (datetime.now() - start_time).total_seconds() * 1000

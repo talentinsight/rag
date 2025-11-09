@@ -2,6 +2,10 @@
 
 # GitHub to AWS Deployment Script
 # This script deploys the latest code from GitHub to AWS EC2
+#
+# ⚠️  IMPORTANT: This is a MANUAL deployment script for testing only!
+# ⚠️  For production, use GitHub Actions which automatically injects secrets
+# ⚠️  If you use this script manually, replace YOUR_*_HERE with actual values
 
 set -e
 
@@ -73,6 +77,13 @@ User=ec2-user
 WorkingDirectory=/opt/rag-app
 Environment=PATH=/opt/rag-app/rag_env/bin:/opt/rag-app/rag_env_38/bin:/usr/bin:/bin
 Environment=PYTHONPATH=/opt/rag-app
+Environment=BEARER_TOKEN=YOUR_BEARER_TOKEN_HERE
+Environment=OPENAI_API_KEY=YOUR_OPENAI_API_KEY_HERE
+Environment=PDF_PATH=/opt/rag-app/AttentionAllYouNeed.pdf
+Environment=WEAVIATE_URL=http://localhost:8080
+Environment=HOST=0.0.0.0
+Environment=PORT=8000
+Environment=ENVIRONMENT=production
 ExecStart=/opt/rag-app/rag_env_38/bin/uvicorn src.api_comprehensive_guardrails:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=10
@@ -95,6 +106,13 @@ User=ec2-user
 WorkingDirectory=/opt/rag-app
 Environment=PATH=/opt/rag-app/rag_env/bin:/opt/rag-app/rag_env_38/bin:/usr/bin:/bin
 Environment=PYTHONPATH=/opt/rag-app
+Environment=BEARER_TOKEN=YOUR_BEARER_TOKEN_HERE
+Environment=OPENAI_API_KEY=YOUR_OPENAI_API_KEY_HERE
+Environment=PDF_PATH=/opt/rag-app/AttentionAllYouNeed.pdf
+Environment=WEAVIATE_URL=http://localhost:8080
+Environment=HOST=0.0.0.0
+Environment=PORT=8001
+Environment=ENVIRONMENT=production
 ExecStart=/opt/rag-app/rag_env_38/bin/python -m src.mcp_websocket_server
 Restart=always
 RestartSec=10

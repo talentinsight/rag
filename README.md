@@ -134,10 +134,16 @@ wss://54.91.86.239/mcp
 
 ### 🔑 **Authentication**
 
+**⚠️ IMPORTANT: Set your BEARER_TOKEN environment variable before using the API!**
+
+```bash
+export BEARER_TOKEN="your_secure_token_here"
+```
+
 #### **API Authentication (REST)**
 ```bash
 # HTTP Bearer Token in Authorization header
-Authorization: Bearer 142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0
+Authorization: Bearer YOUR_BEARER_TOKEN_HERE
 ```
 
 #### **MCP Authentication (WebSocket)**
@@ -145,16 +151,17 @@ Authorization: Bearer 142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5
 **🧠 Smart Connection (Recommended)**
 ```javascript
 // Single URL with token - MCP handles auto-detection
-const ws = new WebSocket('wss://54.91.86.239/mcp?token=142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0');
+// Replace YOUR_TOKEN with your actual BEARER_TOKEN
+const ws = new WebSocket('wss://your-server/mcp?token=YOUR_TOKEN');
 ```
 
 #### **For Testing Applications**
-- **URL:** `wss://54.91.86.239/mcp?token=142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0`
+- **URL:** `wss://your-server/mcp?token=YOUR_TOKEN`
 - **Token:** Leave empty (already in URL)
 
 **Alternative (if app has separate token field):**
-- **URL:** `wss://54.91.86.239/mcp`  
-- **Token:** `142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0`
+- **URL:** `wss://your-server/mcp`  
+- **Token:** `YOUR_TOKEN` (from BEARER_TOKEN environment variable)
 
 ### ✨ **Production Features**
 - ✅ **24 Optimized Chunks** (400-800 tokens each)
@@ -231,9 +238,10 @@ curl -X POST "http://localhost:8000/query" \\
 
 #### AWS Production Query - RAG Evaluation (with chunks/sources)
 ```bash
-curl -X POST "https://54.91.86.239/query" \\
+# Replace YOUR_TOKEN with your actual BEARER_TOKEN environment variable
+curl -X POST "https://your-server/query" \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer 142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0" \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
   -d '{
     "question": "What is the Transformer architecture?",
     "num_chunks": 5,
@@ -245,9 +253,10 @@ curl -X POST "https://54.91.86.239/query" \\
 
 #### 🆕 AWS Guardrails Testing Query (no chunks/sources)
 ```bash
-curl -X POST "https://54.91.86.239/query-guardrails" \\
+# Replace YOUR_TOKEN with your actual BEARER_TOKEN environment variable
+curl -X POST "https://your-server/query-guardrails" \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer 142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0" \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
   -d '{
     "question": "My SSN is 123-45-6789 and email is test@example.com",
     "client_id": "security_test"
@@ -257,9 +266,10 @@ curl -X POST "https://54.91.86.239/query-guardrails" \\
 
 #### Example with PII (automatically masked)
 ```bash
-curl -X POST "https://54.91.86.239/query" \\
+# Replace YOUR_TOKEN with your actual BEARER_TOKEN environment variable
+curl -X POST "https://your-server/query" \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer 142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0" \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
   -d '{
     "question": "My email is john@example.com, can you explain attention?",
     "client_id": "test_pii"
@@ -272,7 +282,8 @@ curl -X POST "https://54.91.86.239/query" \\
 **Method 1: Smart Auto-Detection (Recommended)**
 ```javascript
 // Connect once - MCP handles everything automatically!
-const ws = new WebSocket('wss://54.91.86.239/mcp?token=142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0');
+// Replace YOUR_TOKEN with your actual BEARER_TOKEN
+const ws = new WebSocket('wss://your-server/mcp?token=YOUR_TOKEN');
 
 ws.onopen = () => {
   // Initialize MCP protocol

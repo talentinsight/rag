@@ -74,13 +74,19 @@ class VectorStoreManager:
             except Exception as e:
                 logger.warning(f"Weaviate initialization failed: {str(e)}")
         
-        # Fallback to mock store
-        logger.info("Falling back to mock vector store...")
+        # Fallback to mock store (for development/testing only)
+        logger.warning("⚠️  Falling back to mock vector store (NOT RECOMMENDED FOR PRODUCTION)")
+        logger.warning("   Mock store uses TF-IDF instead of embeddings and is less accurate")
+        logger.warning("   For production: Ensure Weaviate is running and accessible")
+        
+        if not self.prefer_weaviate:
+            logger.info("Mock store explicitly preferred - initializing...")
+        
         try:
             mock_store = MockVectorStore(openai_api_key=self.openai_api_key)
             self.store = mock_store
             self.store_type = "mock"
-            logger.info("✅ Successfully initialized mock vector store")
+            logger.info("✅ Successfully initialized mock vector store (development mode)")
             return True
             
         except Exception as e:

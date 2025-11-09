@@ -115,7 +115,38 @@ jobs:
         rm -rf /tmp/*.pkl || echo "No pkl files"
         rm -rf ~/.cache/ || echo "No cache dir"
         
-        echo "=== Creating MCP WebSocket service ==="
+        echo "=== Creating/Updating systemd services with environment variables ==="
+        
+        # Main RAG API service
+        sudo tee /etc/systemd/system/rag-app.service > /dev/null << EOF
+        [Unit]
+        Description=RAG API Service
+        After=network.target
+
+        [Service]
+        Type=simple
+        User=ec2-user
+        WorkingDirectory=/opt/rag-app
+        Environment=PATH=/opt/rag-app/rag_env/bin:/opt/rag-app/rag_env_38/bin:/usr/bin:/bin
+        Environment=PYTHONPATH=/opt/rag-app
+        Environment=BEARER_TOKEN=${{ secrets.BEARER_TOKEN }}
+        Environment=OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        Environment=PDF_PATH=/opt/rag-app/AttentionAllYouNeed.pdf
+        Environment=WEAVIATE_URL=http://localhost:8080
+        Environment=HOST=0.0.0.0
+        Environment=PORT=8000
+        Environment=ENVIRONMENT=production
+        ExecStart=/opt/rag-app/rag_env_38/bin/uvicorn src.api_comprehensive_guardrails:app --host 0.0.0.0 --port 8000
+        Restart=always
+        RestartSec=10
+        StandardOutput=journal
+        StandardError=journal
+
+        [Install]
+        WantedBy=multi-user.target
+        EOF
+        
+        # MCP WebSocket service
         sudo tee /etc/systemd/system/rag-mcp.service > /dev/null << EOF
         [Unit]
         Description=RAG MCP WebSocket Server
@@ -127,6 +158,13 @@ jobs:
         WorkingDirectory=/opt/rag-app
         Environment=PATH=/opt/rag-app/rag_env/bin:/opt/rag-app/rag_env_38/bin:/usr/bin:/bin
         Environment=PYTHONPATH=/opt/rag-app
+        Environment=BEARER_TOKEN=${{ secrets.BEARER_TOKEN }}
+        Environment=OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        Environment=PDF_PATH=/opt/rag-app/AttentionAllYouNeed.pdf
+        Environment=WEAVIATE_URL=http://localhost:8080
+        Environment=HOST=0.0.0.0
+        Environment=PORT=8001
+        Environment=ENVIRONMENT=production
         ExecStart=/opt/rag-app/rag_env_38/bin/python -m src.mcp_websocket_server
         Restart=always
         RestartSec=10
@@ -136,7 +174,9 @@ jobs:
         [Install]
         WantedBy=multi-user.target
         EOF
+        
         sudo systemctl daemon-reload
+        sudo systemctl enable rag-app
         sudo systemctl enable rag-mcp
 
         echo "=== Fresh service restart ==="

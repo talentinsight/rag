@@ -377,7 +377,12 @@ async def websocket_mcp_endpoint(websocket: WebSocket):
             token = auth_header[7:]
     
     # Validate token
-    expected_token = os.getenv("BEARER_TOKEN", "142c5738204c9ae01e39084e177a5bf67ade8578f79336f28459796fd5e9d6a0")
+    expected_token = os.getenv("BEARER_TOKEN")
+    
+    if not expected_token:
+        logger.error("BEARER_TOKEN environment variable is not set!")
+        await websocket.close(code=4000, reason="Server configuration error")
+        return
     
     if not token or token != expected_token:
         logger.warning(f"MCP WebSocket authentication failed from {websocket.client}")

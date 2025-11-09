@@ -245,8 +245,21 @@ class RAGPipeline:
 def main():
     """
     Test the complete RAG pipeline
+    Note: This is a test function. For production use, use the proper API endpoints.
     """
+    logger.error("RAGPipeline main() is for testing only. Use API endpoints for production.")
+    logger.info("To use RAGPipeline properly:")
+    logger.info("  1. Set environment variables: OPENAI_API_KEY, PDF_PATH, WEAVIATE_URL")
+    logger.info("  2. Initialize: pipeline = RAGPipeline(prefer_weaviate=True)")
+    logger.info("  3. Initialize components: pipeline.initialize()")
+    logger.info("  4. Load document from env: pdf_path = os.getenv('PDF_PATH')")
+    logger.info("  5. Load document: pipeline.load_document(pdf_path)")
+    logger.info("  6. Query: result = pipeline.query(question, num_chunks=5)")
+    logger.info("For production use: Start API server with start_server.py")
+    raise NotImplementedError("Test function removed. Use API endpoints with environment-based configuration in production.")
+
     try:
+        # OLD CODE - REMOVED HARDCODED PATH
         # Initialize pipeline
         logger.info("Testing RAG Pipeline...")
         rag = RAGPipeline(prefer_weaviate=False)  # Use mock store for testing
@@ -255,8 +268,12 @@ def main():
             logger.error("Failed to initialize RAG pipeline")
             return
         
-        # Load the Attention paper
-        pdf_path = "/Users/sam/Desktop/rag/AttentionAllYouNeed.pdf"
+        # Load the Attention paper - USE ENVIRONMENT VARIABLE INSTEAD
+        pdf_path = os.getenv("PDF_PATH")
+        if not pdf_path:
+            logger.error("PDF_PATH environment variable not set")
+            return
+        
         if not rag.load_document(pdf_path):
             logger.error("Failed to load document")
             return
