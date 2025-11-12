@@ -687,3 +687,4 @@ This project is for educational and research purposes.
 - OpenAI for GPT-4 and embedding models
 - Weaviate for vector database technology
 - FastAPI for the web framework
+# Force deployment with updated OpenAI API key - Wed Nov 12 07:57:48 EST 2025
