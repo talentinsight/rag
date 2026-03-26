@@ -26,7 +26,7 @@ class OpenAIClient:
     
     def __init__(self, 
                  api_key: str = None,
-                 model: str = "gpt-4-turbo-preview",  # Using GPT-4 Turbo as GPT-4.1 equivalent
+                 model: str = "gpt-4o",
                  temperature: float = 0.7,
                  max_tokens: int = 1500):
         """

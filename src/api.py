@@ -69,7 +69,7 @@ class HealthResponse(BaseModel):
 class DirectLLMRequest(BaseModel):
     """Request model for direct LLM queries (without RAG)"""
     question: str = Field(..., description="The question to ask directly to the LLM")
-    model: str = Field(default="gpt-3.5-turbo", description="OpenAI model to use")
+    model: str = Field(default="gpt-4o-mini", description="OpenAI model to use")
     temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="Temperature for response generation")
     max_tokens: int = Field(default=500, ge=1, le=4000, description="Maximum tokens in response")
 
@@ -102,7 +102,8 @@ async def lifespan(app: FastAPI):
     try:
         # Initialize RAG pipeline
         rag_pipeline = RAGPipeline(
-            prefer_weaviate=True,  # Use Weaviate for production
+            prefer_weaviate=True,
+            weaviate_url=os.getenv("WEAVIATE_URL", "http://localhost:8080"),
             openai_api_key=os.getenv("OPENAI_API_KEY")
         )
         

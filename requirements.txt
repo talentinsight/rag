@@ -12,21 +12,15 @@ pypdf>=4.0.0
 pdfplumber>=0.9.0
 
 # Data processing and ML
-numpy>=1.21.0,<2.0.0  # Pin numpy to 1.x for Python 3.8 compatibility
+numpy>=1.21.0,<2.0.0
 pandas>=1.5.0
 scikit-learn>=1.2.0
 transformers>=4.21.0
 
-# Advanced PII Detection (Python 3.8 compatible versions)
-# Microsoft Presidio for enterprise-grade PII detection (optional - fallback gracefully)
-# presidio-analyzer>=2.2.0,<2.3.0
-# presidio-anonymizer>=2.2.0,<2.3.0
-
-# spaCy for NLP (Python 3.8 compatible) - optional for now
-# spacy>=3.4.0,<3.7.0
-
-# Additional ML models for better PII detection
-# Note: Install spaCy model with: python -m spacy download en_core_web_sm
+# Advanced PII Detection (optional)
+# presidio-analyzer>=2.2.0
+# presidio-anonymizer>=2.2.0
+# spacy>=3.4.0
 
 # HTTP and networking
 requests>=2.28.0
@@ -42,10 +36,8 @@ pytest-asyncio>=0.21.0
 # AWS (optional)
 boto3>=1.26.0
 
-# Vector database (optional)
-weaviate-client>=3.15.0
+# Vector database
+weaviate-client>=4.0.0
 
-# MCP (optional) - Model Context Protocol
-# Note: MCP package has build issues, using websockets only for now
-# mcp functionality implemented directly in code
+# MCP and WebSocket
 websockets>=12.0

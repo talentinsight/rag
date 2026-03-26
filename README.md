@@ -6,7 +6,7 @@ A complete production-ready Retrieval-Augmented Generation (RAG) system for quer
 
 - **🔍 Semantic Text Chunking**: Intelligent document splitting (24 optimized chunks)
 - **🗄️ Vector Database**: Weaviate integration with fallback to TF-IDF mock store
-- **🤖 OpenAI Integration**: GPT-4 Turbo with 50-word response limit for concise answers
+- **🤖 OpenAI Integration**: GPT-4o with 50-word response limit for concise answers
 - **⚡ FastAPI REST API**: Production-ready web service with comprehensive guardrails
 - **🛡️ Comprehensive Guardrails**: Advanced safety system with PII masking
   - **33+ PII Patterns**: Email, phone, SSN, credit cards, API keys, JWT tokens, AWS keys, medical records
@@ -25,7 +25,7 @@ A complete production-ready Retrieval-Augmented Generation (RAG) system for quer
 
 ## 📋 Requirements
 
-- Python 3.8+ (✅ Deployed with Python 3.8.20)
+- Python 3.13+
 - OpenAI API key (✅ Configured)
 - Docker (optional, for Weaviate)
 - AWS account (✅ Deployed on EC2)
@@ -35,8 +35,8 @@ A complete production-ready Retrieval-Augmented Generation (RAG) system for quer
 1. **Clone and setup environment**:
    ```bash
    cd /path/to/rag
-   python3 -m venv rag_env
-   source rag_env/bin/activate  # On Windows: rag_env\\Scripts\\activate
+   python3 -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\\Scripts\\activate
    pip install -r requirements.txt
    ```
 
@@ -387,7 +387,7 @@ ws.onmessage = (event) => {
       "section": "Model Architecture"
     }
   ],
-  "model": "gpt-4-turbo-preview",
+  "model": "gpt-4o",
   "total_tokens": 1250,
   "processing_time_ms": 1500.5,
   "guardrails_passed": true,
@@ -404,7 +404,7 @@ ws.onmessage = (event) => {
   "answer": "BLOCKED: PII detected in request",
   "question": "My SSN is 123-45-6789",
   "pii_masked_input": "My SSN is [SSN_MASKED]",
-  "model": "gpt-4-turbo-preview",
+  "model": "gpt-4o",
   "total_tokens": 0,
   "processing_time_ms": 245.8,
   "guardrails_passed": false,
@@ -438,7 +438,7 @@ ws.onmessage = (event) => {
 └─────────────────┘    └──────────────────┘
          │                       │
          │              ┌────────▼─────────┐    ┌─────────────────┐
-         │              │ Vector Database  │    │ OpenAI GPT-4    │
+         │              │ Vector Database  │    │ OpenAI GPT-4o   │
          │              │ (Weaviate/Mock)  │    │ + Word Limiting │
          │              └──────────────────┘    └─────────────────┘
          │
@@ -684,7 +684,7 @@ This project is for educational and research purposes.
 ## 🙏 Acknowledgments
 
 - "Attention Is All You Need" paper by Vaswani et al.
-- OpenAI for GPT-4 and embedding models
+- OpenAI for GPT-4o and embedding models
 - Weaviate for vector database technology
 - FastAPI for the web framework
 # Force deployment with updated OpenAI API key - Wed Nov 12 07:57:48 EST 2025

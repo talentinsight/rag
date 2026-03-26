@@ -5,7 +5,7 @@ Building a RAG (Retrieval-Augmented Generation) system using the "Attention All 
 - Semantic text chunking
 - OpenAI embeddings
 - Weaviate vector database
-- OpenAI GPT-4.1 API
+- OpenAI GPT-4o API
 - FastAPI framework
 - MCP support
 - AWS deployment
@@ -25,7 +25,7 @@ Building a RAG (Retrieval-Augmented Generation) system using the "Attention All 
 - [x] **similarity-search**: Implement semantic similarity search functionality in Weaviate
 
 ### AI Integration
-- [x] **openai-integration**: Integrate OpenAI GPT-4.1 API for response generation
+- [x] **openai-integration**: Integrate OpenAI GPT-4o API for response generation
 - [x] **rag-pipeline**: Build complete RAG pipeline (retrieve relevant chunks + generate response)
 
 ### API Development

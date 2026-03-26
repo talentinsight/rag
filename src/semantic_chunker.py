@@ -42,7 +42,7 @@ class SemanticChunker:
                  chunk_size: int = 512, 
                  chunk_overlap: int = 50,
                  min_chunk_size: int = 100,
-                 model_name: str = "gpt-3.5-turbo"):
+                 model_name: str = "gpt-4o-mini"):
         """
         Initialize the semantic chunker
         

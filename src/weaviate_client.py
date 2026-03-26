@@ -140,7 +140,7 @@ class WeaviateManager:
                     model="text-embedding-3-small"  # Using OpenAI's latest embedding model
                 ),
                 generative_config=Configure.Generative.openai(
-                    model="gpt-4"  # For generative queries if needed
+                    model="gpt-4o"
                 ),
                 properties=[
                     Property(name="content", data_type=DataType.TEXT),

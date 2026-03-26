@@ -46,7 +46,9 @@ async def lifespan(app: FastAPI):
     global rag_pipeline
     try:
         logger.info("Initializing RAG pipeline at startup...")
-        rag_pipeline = RAGPipeline()
+        rag_pipeline = RAGPipeline(
+            weaviate_url=os.getenv("WEAVIATE_URL", "http://localhost:8080"),
+        )
         if rag_pipeline.initialize():
             logger.info("✅ RAG pipeline initialized successfully")
         else:
@@ -77,7 +79,9 @@ def get_rag_pipeline() -> RAGPipeline:
     if rag_pipeline is None:
         try:
             logger.info("🔄 Initializing RAG pipeline...")
-            rag_pipeline = RAGPipeline()
+            rag_pipeline = RAGPipeline(
+                weaviate_url=os.getenv("WEAVIATE_URL", "http://localhost:8080"),
+            )
             if not rag_pipeline.initialize():
                 logger.error("❌ RAG pipeline initialization failed")
                 raise HTTPException(status_code=500, detail="Failed to initialize RAG pipeline")
@@ -199,7 +203,9 @@ async def health_check():
         if rag_pipeline is None:
             try:
                 logger.info("🔄 Initializing RAG pipeline during health check...")
-                rag_pipeline = RAGPipeline()
+                rag_pipeline = RAGPipeline(
+                    weaviate_url=os.getenv("WEAVIATE_URL", "http://localhost:8080"),
+                )
                 if not rag_pipeline.initialize():
                     logger.error("❌ RAG pipeline initialization failed during health check")
                     rag_pipeline = None
@@ -268,10 +274,10 @@ async def get_comprehensive_stats(_: bool = Depends(verify_token)):
         }
         
         system_info = {
-            "python_version": "3.8+",
-            "environment": "production",
-            "host": "0.0.0.0",
-            "port": "8000",
+            "python_version": f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}",
+            "environment": os.getenv("ENVIRONMENT", "production"),
+            "host": os.getenv("HOST", "0.0.0.0"),
+            "port": os.getenv("PORT", "8000"),
             "guardrails_version": "2.0.0"
         }
         

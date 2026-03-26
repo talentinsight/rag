@@ -27,6 +27,7 @@ wheels/
 MANIFEST
 
 # Virtual environments
+.venv/
 rag_env/
 venv/
 ENV/
