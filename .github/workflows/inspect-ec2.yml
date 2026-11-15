@@ -1,0 +1,26 @@
+name: Inspect EC2 (temporary, read-only)
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths: [ '.github/workflows/inspect-ec2.yml' ]
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Read-only inspection
+      run: |
+        echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/rag.pem
+        chmod 600 /tmp/rag.pem
+        ssh -i /tmp/rag.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+          ec2-user@${{ secrets.EC2_HOST }} 'bash -s' << 'EOSSH'
+        echo "--- os"; grep PRETTY_NAME /etc/os-release
+        echo "--- pythons"; for p in python3 python3.9 python3.10 python3.11 python3.12 python3.13; do command -v $p >/dev/null && echo "$p: $($p --version 2>&1)"; done
+        echo "--- venvs"; ls -d /opt/rag-app/rag_env_38 /opt/rag-app/.venv 2>&1; for v in rag_env_38 .venv; do [ -x /opt/rag-app/$v/bin/python ] && echo "$v: $(/opt/rag-app/$v/bin/python --version 2>&1)"; done
+        echo "--- memory"; free -m
+        echo "--- cpu"; nproc
+        echo "--- disk"; df -h /opt | tail -1
+        echo "--- rag processes (rss MB)"; ps -eo rss,args | grep -E "uvicorn|mcp_websocket" | grep -v grep | awk '{printf "%d MB  %s %s %s\n", $1/1024, $2, $3, $4}'
+        EOSSH
+        rm -f /tmp/rag.pem
