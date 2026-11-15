@@ -346,49 +346,60 @@ def _calculate_safety_score(input_results: List[GuardrailResult], output_results
     
     return total_score / total_weight if total_weight > 0 else 1.0
 
-@app.post("/query", response_model=QueryResponse)
-async def query_with_comprehensive_guardrails(
-    request: QueryRequest,
-    _: bool = Depends(verify_token)
-):
+class QueryBlocked(Exception):
+    """Raised internally when a critical input guardrail blocks a query."""
+
+    def __init__(self, response: "QueryResponse", critical_failures: List[GuardrailResult]):
+        super().__init__("Query blocked by critical input guardrail")
+        self.response = response
+        self.critical_failures = critical_failures
+
+
+async def _execute_query(request: QueryRequest) -> QueryResponse:
     """
-    Process query with comprehensive guardrails protection
+    Shared query path used by every query route.
+
+    Order of operations: PII masking -> input guardrails -> (critical block
+    short-circuit) -> retrieval + generation with the masked query -> output
+    guardrails. Raises QueryBlocked for critical input blocks; any other
+    failure surfaces as HTTPException(500).
     """
     start_time = datetime.now()
-    
+
     try:
         # Generate PII masked input for evaluation
         pii_masked_input = guardrails.mask_pii(request.question)
-        
+
         # Input guardrails check (PII filtering only)
         logger.info(f"Running input guardrails (PII filtering only) for client: {request.client_id}")
         input_passed, input_results = guardrails.check_input_guardrails_with_pii_filtering(
-            request.question, 
+            request.question,
             request.client_id
         )
-        
+
         # Check if PII was detected
         pii_detected = any(r.category == "pii_detection" and not r.passed for r in input_results)
-        
-        # Determine which query to use for RAG
+
+        # Retrieval and generation only ever see the masked query when PII was detected
         query_for_rag = pii_masked_input if pii_detected else request.question
-        
-        # Log PII detection and masking
+
         if pii_detected:
-            logger.info(f"🔒 PII detected and masked: '{request.question}' -> '{query_for_rag}'")
-        
-        # Check for non-PII blocking conditions (should be rare with PII-only filtering)
-        non_pii_failures = [r for r in input_results if not r.passed and r.category != "pii_detection"]
-        if non_pii_failures:
-            # Only block for critical non-PII failures
-            critical_failures = [r for r in non_pii_failures if r.severity == "critical"]
-            if critical_failures:
-                safe_answer = "BLOCKED: Safety guidelines violation"
-                processing_time = (datetime.now() - start_time).total_seconds() * 1000
-                safety_score = _calculate_safety_score(input_results, [])
-                
-                return QueryResponse(
-                    answer=safe_answer,
+            # Never log the raw question here
+            logger.info("🔒 PII detected; masked query will be used for retrieval and generation")
+
+        # Only critical non-PII failures block
+        critical_failures = [
+            r for r in input_results
+            if not r.passed and r.category != "pii_detection" and r.severity == "critical"
+        ]
+        if critical_failures:
+            logger.warning(
+                f"Blocking request due to critical failures: {[r.reason for r in critical_failures]}"
+            )
+            processing_time = (datetime.now() - start_time).total_seconds() * 1000
+            raise QueryBlocked(
+                QueryResponse(
+                    answer="BLOCKED: Safety guidelines violation",
                     question=request.question,
                     pii_masked_input=pii_masked_input,
                     chunks_found=0,
@@ -399,54 +410,41 @@ async def query_with_comprehensive_guardrails(
                     guardrails_passed=False,
                     input_guardrails=_convert_guardrail_results(input_results),
                     output_guardrails=[],
-                    safety_score=safety_score
-                )
-        
-        # Process with RAG pipeline using masked query if PII was detected
-        logger.info(f"Processing with RAG pipeline using query: '{query_for_rag}'")
+                    safety_score=_calculate_safety_score(input_results, [])
+                ),
+                critical_failures,
+            )
+
         pipeline = get_rag_pipeline()
-        
-        # Generate response using the appropriate query (masked if PII detected)
-        response = await asyncio.get_event_loop().run_in_executor(
+
+        # Single retrieval + generation call, using the (possibly masked) query
+        response = await asyncio.get_running_loop().run_in_executor(
             None,
             pipeline.query,
-            query_for_rag,  # Use masked query instead of original
+            query_for_rag,
             request.num_chunks,
             request.min_score
         )
-        
-        # Prepare response data for output guardrails
+
+        # Output guardrails (check results are reported, answer is not filtered)
         response_data = {
             "answer": response["answer"],
             "question": request.question,
             "timestamp": datetime.now().isoformat()
         }
-        
-        # Output guardrails check
         logger.info("Running output guardrails")
         output_passed, output_results = guardrails.check_output_guardrails(
             response_data,
             start_time
         )
-        
+
         if not output_passed:
-            # Log output guardrails failures but don't filter response
             failed_output_checks = [r for r in output_results if not r.passed]
             logger.warning(f"Output guardrails detected issues: {[r.reason for r in failed_output_checks]}")
-            
-            # DISABLED: No output filtering - we only block input PII, not output content
-            # LLM responses should not be filtered for PII as they are educational content
-            # if any(r.category == "pii_detection" and not r.passed for r in failed_output_checks):
-            #     response["answer"] = "OUTPUT_FILTERED: PII detected in response"
-            # For other issues (adult, profanity, toxicity): just log, don't filter
-        
-        # Calculate processing time
+            # Current policy: record the failed check and return the answer unchanged.
+
         processing_time = (datetime.now() - start_time).total_seconds() * 1000
-        
-        # Calculate safety score
-        safety_score = _calculate_safety_score(input_results, output_results)
-        
-        # Build comprehensive response
+
         return QueryResponse(
             answer=response["answer"],
             question=request.question,
@@ -459,116 +457,53 @@ async def query_with_comprehensive_guardrails(
             guardrails_passed=input_passed and output_passed,
             input_guardrails=_convert_guardrail_results(input_results),
             output_guardrails=_convert_guardrail_results(output_results),
-            safety_score=safety_score
+            safety_score=_calculate_safety_score(input_results, output_results)
         )
-        
-    except HTTPException:
-        # Re-raise HTTP exceptions (like guardrails blocks)
+
+    except (QueryBlocked, HTTPException):
         raise
     except Exception as e:
-        logger.error(f"Query processing failed: {str(e)}")
+        # Log only the exception type: messages may echo the raw question
+        logger.error(f"Query processing failed: {type(e).__name__}")
         raise HTTPException(status_code=500, detail=f"Query processing failed: {str(e)}")
 
-@app.post("/query-guardrails", response_model=GuardrailsQueryResponse)
+
+@app.post("/query", response_model=QueryResponse)
+async def query_with_comprehensive_guardrails(
+    request: QueryRequest,
+    _: bool = Depends(verify_token)
+):
+    """
+    Canonical query endpoint: retrieval, generation and guardrails in one path.
+    A critical input block returns a structured 200 response with empty sources.
+    """
+    try:
+        return await _execute_query(request)
+    except QueryBlocked as blocked:
+        return blocked.response
+
+
+@app.post("/query-guardrails", response_model=GuardrailsQueryResponse, deprecated=True)
 async def query_guardrails_focused(
     request: QueryRequest,
     _: bool = Depends(verify_token)
 ):
     """
-    Process query with comprehensive guardrails protection (no chunks/sources in response)
-    Designed for Guardrails and Red Team testing
+    TRANSITIONAL compatibility route; use POST /query instead.
+    Runs the shared query path and returns the legacy shape (no chunks/sources);
+    a critical input block returns HTTP 400 as before.
     """
-    start_time = datetime.now()
-    
     try:
-        # Generate PII masked input for evaluation
-        pii_masked_input = guardrails.mask_pii(request.question)
-        
-        # Input guardrails check (PII filtering only)
-        logger.info(f"Running input guardrails (PII filtering only) for client: {request.client_id}")
-        input_passed, input_results = guardrails.check_input_guardrails_with_pii_filtering(
-            request.question, 
-            request.client_id
+        result = await _execute_query(request)
+    except QueryBlocked as blocked:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Request blocked: {', '.join([r.reason for r in blocked.critical_failures])}"
         )
-        
-        # Check if PII was detected
-        pii_detected = any(r.category == "pii_detection" and not r.passed for r in input_results)
-        
-        # Determine which query to use for RAG
-        query_for_rag = pii_masked_input if pii_detected else request.question
-        
-        # Log PII detection and masking
-        if pii_detected:
-            logger.info(f"🔒 PII detected and masked: '{request.question}' -> '{query_for_rag}'")
-        
-        # Check for non-PII blocking conditions (should be rare with PII-only filtering)
-        non_pii_failures = [r for r in input_results if not r.passed and r.category != "pii_detection"]
-        if non_pii_failures:
-            # Only block for critical non-PII failures
-            critical_failures = [r for r in non_pii_failures if r.severity == "critical"]
-            if critical_failures:
-                logger.warning(f"Blocking request due to critical failures: {[r.reason for r in critical_failures]}")
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"Request blocked: {', '.join([r.reason for r in critical_failures])}"
-                )
-        
-        # Get RAG pipeline
-        rag_pipeline = get_rag_pipeline()
-        
-        # Execute RAG query with masked input if PII was detected
-        logger.info(f"Executing RAG query with input: '{query_for_rag[:100]}...'")
-        response = rag_pipeline.query(
-            query_for_rag,
-            num_chunks=request.num_chunks,
-            min_score=request.min_score
-        )
-        
-        # Prepare response data for output guardrails
-        response_data = {
-            "answer": response.get("answer", ""),
-            "question": request.question,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-        # Output guardrails check
-        logger.info("Running output guardrails")
-        output_passed, output_results = guardrails.check_output_guardrails(
-            response_data,
-            start_time
-        )
-        
-        if not output_passed:
-            # Log output guardrails failures but don't filter response
-            failed_output_checks = [r for r in output_results if not r.passed]
-            logger.warning(f"Output guardrails detected issues: {[r.reason for r in failed_output_checks]}")
-        
-        # Calculate processing time
-        processing_time = (datetime.now() - start_time).total_seconds() * 1000
-        
-        # Calculate safety score
-        safety_score = _calculate_safety_score(input_results, output_results)
-        
-        # Build guardrails-focused response (NO chunks/sources)
-        return GuardrailsQueryResponse(
-            answer=response["answer"],
-            question=request.question,
-            pii_masked_input=pii_masked_input,
-            model=response.get("model"),
-            total_tokens=response.get("total_tokens"),
-            processing_time_ms=processing_time,
-            guardrails_passed=input_passed and output_passed,
-            input_guardrails=_convert_guardrail_results(input_results),
-            output_guardrails=_convert_guardrail_results(output_results),
-            safety_score=safety_score
-        )
-        
-    except HTTPException:
-        # Re-raise HTTP exceptions (like guardrails blocks)
-        raise
-    except Exception as e:
-        logger.error(f"Guardrails query processing failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Guardrails query processing failed: {str(e)}")
+    return GuardrailsQueryResponse(
+        **result.model_dump(exclude={"chunks_found", "sources"})
+    )
+
 
 @app.get("/test-guardrails")
 async def test_guardrails_endpoint(_: bool = Depends(verify_token)):
