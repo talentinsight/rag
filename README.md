@@ -178,8 +178,8 @@ const ws = new WebSocket('wss://your-server/mcp?token=YOUR_TOKEN');
 - `GET /` - Root endpoint with basic info
 - `GET /health` - Health check and system status  
 - `GET /stats` - Detailed system statistics
-- `POST /query` - **RAG Evaluation endpoint** (with chunks/sources, detailed analysis)
-- `POST /query-guardrails` - **🆕 Guardrails Testing endpoint** (no chunks/sources, security-focused)
+- `POST /query` - **Canonical query endpoint** (retrieval, generation, guardrails; returns sources). Use this for RAG evaluation, guardrail and red-team testing. A critical input block returns HTTP 200 with a `BLOCKED` answer, guardrail evidence and empty `sources`.
+- `POST /query-guardrails` - **Deprecated, transitional.** Compatibility route that runs the same shared code as `/query` but returns the legacy shape (no `chunks_found`/`sources`) and HTTP 400 on a critical input block. Will be removed once clients migrate to `/query`.
 - `GET /guardrails-stats` - Guardrails system statistics
 - `POST /reset-stats` - Reset system statistics
 
@@ -251,7 +251,7 @@ curl -X POST "https://your-server/query" \\
   -k
 ```
 
-#### 🆕 AWS Guardrails Testing Query (no chunks/sources)
+#### Legacy `/query-guardrails` (deprecated; use `/query` instead)
 ```bash
 # Replace YOUR_TOKEN with your actual BEARER_TOKEN environment variable
 curl -X POST "https://your-server/query-guardrails" \\
@@ -398,7 +398,7 @@ ws.onmessage = (event) => {
 }
 ```
 
-#### **Guardrails Testing Response** (`/query-guardrails` - no chunks/sources)
+#### **Legacy Response** (`/query-guardrails` - deprecated, no chunks/sources)
 ```json
 {
   "answer": "BLOCKED: PII detected in request",
