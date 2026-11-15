@@ -4,7 +4,6 @@ Implements all major guardrail categories with professional-grade protection
 """
 
 import re
-import asyncio
 from typing import List, Dict, Any, Tuple, Optional
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -13,13 +12,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Import advanced PII detector
-try:
-    from .advanced_pii_detector import AdvancedPIIDetector, PIIDetectionMethod
-    ADVANCED_PII_AVAILABLE = True
-except ImportError as e:
-    ADVANCED_PII_AVAILABLE = False
-    logger.warning(f"Advanced PII detector not available: {e}")
+from .advanced_pii_detector import PIIDetector
 
 @dataclass
 class GuardrailResult:
@@ -54,34 +47,11 @@ class ComprehensiveGuardrails:
         # Load patterns and configurations
         self._load_patterns()
         
-        # Initialize advanced PII detector if available
-        self.advanced_pii_detector = None
-        if ADVANCED_PII_AVAILABLE:
-            try:
-                self.advanced_pii_detector = AdvancedPIIDetector(
-                    preferred_method=PIIDetectionMethod.HYBRID,
-                    confidence_threshold=0.7
-                )
-                logger.info("✅ Advanced PII Detector initialized")
-            except Exception as e:
-                logger.warning(f"Failed to initialize Advanced PII Detector: {e}")
-                self.advanced_pii_detector = None
-    
+        # Required: construction fails (and the service does not start) if unavailable
+        self.pii_detector = PIIDetector()
+
     def _load_patterns(self):
         """Load all detection patterns"""
-        
-        # PII Patterns - Improved with reduced false positives
-        self.pii_patterns = {
-            "email": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
-            "phone": r"\b\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b",
-            # More specific credit card pattern with Luhn algorithm context
-            "credit_card": r"\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3[0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\b",
-            "ssn": r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b",
-            # More specific API key pattern - common prefixes and formats
-            "api_key": r"\b(?:sk-|pk_|api[_-]?key[_-]?|token[_-]?)[A-Za-z0-9]{20,}\b",
-            # Enhanced name pattern with more contexts
-            "name": r"(?i)\b(?:my name is|i am|i'm|call me|name:|full name)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b"
-        }
         
         # Adult Content Patterns
         self.adult_content_patterns = [
@@ -124,219 +94,30 @@ class ComprehensiveGuardrails:
         self.data_leakage_detection_enabled = True
 
     def check_pii_detection(self, text: str) -> GuardrailResult:
-        """Enhanced PII detection with ML/AI fallback"""
-        # Try advanced detector first if available
-        if self.advanced_pii_detector:
-            try:
-                # Run async detection in sync context
-                loop = None
-                try:
-                    loop = asyncio.get_event_loop()
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                
-                advanced_result = loop.run_until_complete(
-                    self.advanced_pii_detector.detect_pii(text)
-                )
-                
-                return GuardrailResult(
-                    passed=not advanced_result.has_pii,
-                    score=advanced_result.confidence,
-                    reason=f"Advanced PII detection: {'PII found' if advanced_result.has_pii else 'No PII detected'} "
-                           f"(method: {advanced_result.method_used}, "
-                           f"entities: {len(advanced_result.detected_entities)})",
-                    category="pii_detection",
-                    severity="high" if advanced_result.has_pii else "low",
-                    metadata={
-                        "method": advanced_result.method_used,
-                        "confidence": advanced_result.confidence,
-                        "entities": advanced_result.detected_entities,
-                        "processing_time_ms": advanced_result.processing_time_ms,
-                        "advanced_detector": True
-                    }
-                )
-            except Exception as e:
-                logger.warning(f"Advanced PII detection failed, falling back to regex: {e}")
-        
-        # Fallback to original regex-based detection
-        return self._check_pii_detection_regex(text)
-    
-    def mask_pii(self, text: str) -> str:
-        """
-        Mask PII in text while preserving context for RAG processing
-        
-        Args:
-            text: Input text that may contain PII
-            
-        Returns:
-            str: Text with PII masked using placeholders
-        """
-        masked_text = text
-        
-        # Use advanced PII detector if available
-        if self.advanced_pii_detector:
-            try:
-                loop = None
-                try:
-                    loop = asyncio.get_event_loop()
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                
-                advanced_result = loop.run_until_complete(
-                    self.advanced_pii_detector.detect_pii(text)
-                )
-                
-                if advanced_result.passed:  # No PII detected
-                    return text
-                
-                # Mask detected PII entities
-                entities = advanced_result.metadata.get("entities", [])
-                for entity in entities:
-                    entity_text = entity.get("text", "")
-                    entity_type = entity.get("type", "PII")
-                    if entity_text:
-                        masked_text = masked_text.replace(entity_text, f"[{entity_type}]")
-                
-                return masked_text
-                
-            except Exception as e:
-                logger.warning(f"Advanced PII masking failed, falling back to regex: {e}")
-        
-        # Fallback to regex-based masking
-        return self._mask_pii_regex(text)
-    
-    def _mask_pii_regex(self, text: str) -> str:
-        """
-        Regex-based PII masking fallback
-        
-        Args:
-            text: Input text
-            
-        Returns:
-            str: Text with PII masked
-        """
-        masked_text = text
-        
-        # Mask different PII types
-        masked_text = re.sub(self.pii_patterns["email"], "[EMAIL]", masked_text)
-        masked_text = re.sub(self.pii_patterns["phone"], "[PHONE]", masked_text)
-        masked_text = re.sub(self.pii_patterns["credit_card"], "[CREDIT_CARD]", masked_text)
-        masked_text = re.sub(self.pii_patterns["ssn"], "[SSN]", masked_text)
-        masked_text = re.sub(self.pii_patterns["api_key"], "[API_KEY]", masked_text)
-        
-        # Mask names (more carefully to avoid false positives)
-        name_match = re.search(self.pii_patterns["name"], masked_text)
-        if name_match:
-            full_name = name_match.group(1) if name_match.groups() else name_match.group(0)
-            masked_text = masked_text.replace(full_name, "[PERSON]")
-        
-        return masked_text
-    
-    def _check_pii_detection_regex(self, text: str) -> GuardrailResult:
-        """Original regex-based PII detection as fallback"""
-        pii_found = []
-        detected_types = []
-        
-        # Common false positive patterns to exclude
-        false_positive_patterns = [
-            r"\b(test|example|sample|demo)\b",  # Test data indicators
-            r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b.*\b(test|example|sample)\b",  # Test credit cards
-            r"\b[A-Za-z0-9]{32,}\b.*\b(hash|id|uuid|guid)\b"  # Technical identifiers
-        ]
-        
-        for pii_type, pattern in self.pii_patterns.items():
-            matches = re.findall(pattern, text, re.IGNORECASE)
-            if matches:
-                # Filter out false positives for specific types
-                filtered_matches = []
-                for match in matches:
-                    match_str = str(match) if isinstance(match, tuple) else match
-                    
-                    # Check if this match is likely a false positive
-                    is_false_positive = False
-                    for fp_pattern in false_positive_patterns:
-                        if re.search(fp_pattern, text, re.IGNORECASE):
-                            # Additional context check around the match
-                            match_context = text.lower()
-                            if any(indicator in match_context for indicator in ['test', 'example', 'sample', 'demo', 'mock']):
-                                is_false_positive = True
-                                break
-                    
-                    # Special handling for API keys - require common prefixes
-                    if pii_type == "api_key" and not re.search(r"\b(?:sk-|pk_|api|key|token)", text, re.IGNORECASE):
-                        is_false_positive = True
-                    
-                    # Special handling for credit cards - basic Luhn check context
-                    if pii_type == "credit_card":
-                        # If it's in a context that suggests it's not a real CC
-                        if re.search(r"\b(?:hate|angry|mad|upset)\b", text, re.IGNORECASE):
-                            is_false_positive = True
-                    
-                    if not is_false_positive:
-                        filtered_matches.append(match)
-                
-                if filtered_matches:
-                    pii_found.extend(filtered_matches)
-                    detected_types.append(pii_type)
-        
-        if pii_found:
+        """Detect PII. Metadata never contains the matched text."""
+        entities = self.pii_detector.detect(text)
+        if entities:
+            detected_types = sorted({e.type for e in entities})
             return GuardrailResult(
                 passed=False,
-                score=1.0,
-                reason=f"PII detected (regex): {len(pii_found)} instances of {', '.join(detected_types)}",
+                score=max(e.score for e in entities),
+                reason=f"PII detected (presidio): {len(entities)} instances of {', '.join(detected_types)}",
                 category="pii_detection",
                 severity="high",
-                metadata={
-                    "detected_types": detected_types, 
-                    "count": len(pii_found),
-                    "method": "regex_fallback",
-                    "advanced_detector": False
-                }
+                metadata={"detected_types": detected_types, "count": len(entities), "method": "presidio"}
             )
-        
         return GuardrailResult(
             passed=True,
             score=0.0,
-            reason="No PII detected (regex)",
+            reason="No PII detected (presidio)",
             category="pii_detection",
             severity="low",
-            metadata={"method": "regex_fallback", "advanced_detector": False}
+            metadata={"method": "presidio"}
         )
-    
+
     def mask_pii(self, text: str) -> str:
-        """
-        Mask PII in text and return the masked version
-        
-        Args:
-            text (str): Input text to mask
-            
-        Returns:
-            str: Text with PII masked
-        """
-        masked_text = text
-        
-        # Define masking patterns for each PII type
-        pii_masks = {
-            "email": "[EMAIL_MASKED]",
-            "phone": "[PHONE_MASKED]", 
-            "credit_card": "[CREDIT_CARD_MASKED]",
-            "ssn": "[SSN_MASKED]",
-            "api_key": "[API_KEY_MASKED]",
-            "name": "[NAME_MASKED]"
-        }
-        
-        # Apply masking for each PII type
-        for pii_type, pattern in self.pii_patterns.items():
-            mask = pii_masks.get(pii_type, "[PII_MASKED]")
-            if pii_type == "name":
-                # Special handling for name pattern (replace only the captured name part)
-                masked_text = re.sub(pattern, lambda m: m.group(0).replace(m.group(1), mask), masked_text, flags=re.IGNORECASE)
-            else:
-                masked_text = re.sub(pattern, mask, masked_text, flags=re.IGNORECASE)
-        
-        return masked_text
+        """Return text with every detected PII span replaced by its placeholder."""
+        return self.pii_detector.mask(text, self.pii_detector.detect(text))
 
     def check_adult_content(self, text: str) -> GuardrailResult:
         """Adult content detection"""

@@ -119,6 +119,9 @@ def test_pii_is_masked_before_retrieval_and_generation(client, pipeline, caplog)
     assert pipeline.calls[0]["question"] == body["pii_masked_input"]
     assert SYNTHETIC_EMAIL not in pipeline.calls[0]["question"]
     assert SYNTHETIC_EMAIL not in caplog.text  # no raw PII in query-path logs
+    assert "falling back" not in caplog.text.lower()  # single detection path, no fallbacks
+    assert pii[0]["metadata"].get("method") == "presidio"
+    assert SYNTHETIC_EMAIL not in str(pii[0]["metadata"])  # no raw PII in the public response
 
 
 def test_critical_block_is_structured_and_skips_retrieval(client, pipeline, monkeypatch):

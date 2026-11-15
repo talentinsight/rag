@@ -25,8 +25,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run API contract tests
-      run: python -m pytest tests/test_query_contract.py -v
+    - name: Run API contract and PII detector tests
+      run: python -m pytest tests -v
 
   deploy:
     needs: test
