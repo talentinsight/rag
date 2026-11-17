@@ -158,7 +158,8 @@ class RAGPipeline:
     def query(self, 
               question: str, 
               num_chunks: int = 5,
-              min_score: float = 0.0) -> Dict[str, Any]:
+              min_score: float = 0.0,
+              history: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
         """
         Query the RAG system
         
@@ -166,6 +167,8 @@ class RAGPipeline:
             question (str): User question
             num_chunks (int): Number of chunks to retrieve
             min_score (float): Minimum similarity score
+            history (Optional[List[Dict]]): Earlier turns as {"role", "content"}, oldest first.
+                Retrieval uses only the latest question; generation sees the history.
             
         Returns:
             Dict: Response with answer and metadata
@@ -191,7 +194,7 @@ class RAGPipeline:
             
             # Generate response using OpenAI (if available) - ALWAYS use LLM even with no chunks
             if self.openai_client:
-                response = self.openai_client.generate_response(question, relevant_chunks)
+                response = self.openai_client.generate_response(question, relevant_chunks, history=history)
                 response["chunks_found"] = len(relevant_chunks)
                 return response
             
