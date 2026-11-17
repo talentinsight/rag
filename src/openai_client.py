@@ -139,10 +139,10 @@ class OpenAIClient:
                 system_prompt = self._get_default_system_prompt()
             
             # Create user prompt
-            user_prompt = self._build_user_prompt(query, context)
+            user_prompt = self._build_user_prompt(query, context, has_history=bool(history))
             
             logger.info(f"Generating response for query: '{query[:50]}...'")
-            logger.info(f"Using {len(context_chunks)} context chunks")
+            logger.info(f"Using {len(context_chunks)} context chunks and {len(history or [])} earlier messages")
             
             # Call OpenAI API
             response = self.client.chat.completions.create(
@@ -242,18 +242,24 @@ Guidelines:
 
 Remember: 50 words maximum. Be helpful and authentic."""
     
-    def _build_user_prompt(self, query: str, context: str) -> str:
+    def _build_user_prompt(self, query: str, context: str, has_history: bool = False) -> str:
         """
         Build user prompt with query and context
         
         Args:
             query (str): User query
             context (str): Retrieved context
+            has_history (bool): Whether earlier conversation messages precede this prompt
             
         Returns:
             str: Formatted user prompt
         """
-        return f"""Based on the following context from the "Attention Is All You Need" paper, please answer the question.
+        conversation_note = (
+            "This is a continuing conversation. The earlier messages above are part of it: "
+            "use them for follow-up questions and for details the user already shared.\n\n"
+            if has_history else ""
+        )
+        return f"""{conversation_note}Based on the following context from the "Attention Is All You Need" paper, please answer the question.
 
 Context:
 {context}
