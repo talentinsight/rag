@@ -3,7 +3,7 @@ Advanced RAG API with Comprehensive Guardrails System
 Implements all major guardrail categories for production-ready safety
 """
 
-from typing import Tuple, List, Optional, Dict, Any
+from typing import Tuple, List, Optional, Dict, Any, Literal
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
@@ -92,9 +92,23 @@ def get_rag_pipeline() -> RAGPipeline:
             raise HTTPException(status_code=500, detail="RAG pipeline initialization failed")
     return rag_pipeline
 
+MAX_HISTORY_MESSAGES = int(os.getenv("MAX_HISTORY_MESSAGES", "20"))
+
+
+class ChatMessage(BaseModel):
+    """One earlier turn of the conversation"""
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class QueryRequest(BaseModel):
     """Enhanced query request model"""
     question: str = Field(..., description="The question to ask about the Attention paper")
+    history: List[ChatMessage] = Field(
+        default_factory=list,
+        max_length=MAX_HISTORY_MESSAGES,
+        description="Earlier turns, oldest first. 'question' is always the latest user message",
+    )
     num_chunks: int = Field(default=5, ge=1, le=20, description="Number of chunks to retrieve")
     min_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Minimum similarity score")
     client_id: str = Field(default="default", description="Client identifier for rate limiting")
@@ -370,10 +384,16 @@ async def _execute_query(request: QueryRequest) -> QueryResponse:
         # Generate PII masked input for evaluation
         pii_masked_input = guardrails.mask_pii(request.question)
 
+        # Earlier user turns reach the model too, so they are checked together with
+        # the latest question in a single guardrail run (one rate-limit hit per request).
+        # Assistant turns are this system's own output and are not re-checked.
+        user_turns = [m.content for m in request.history if m.role == "user"]
+        text_to_check = "\n".join([*user_turns, request.question])
+
         # Input guardrails check (PII filtering only)
         logger.info(f"Running input guardrails (PII filtering only) for client: {request.client_id}")
         input_passed, input_results = guardrails.check_input_guardrails_with_pii_filtering(
-            request.question,
+            text_to_check,
             request.client_id
         )
 
@@ -415,6 +435,12 @@ async def _execute_query(request: QueryRequest) -> QueryResponse:
                 critical_failures,
             )
 
+        # History carries no raw PII into generation, same as the latest question
+        masked_history = [
+            {"role": m.role, "content": guardrails.mask_pii(m.content) if m.role == "user" else m.content}
+            for m in request.history
+        ]
+
         pipeline = get_rag_pipeline()
 
         # Single retrieval + generation call, using the (possibly masked) query
@@ -423,7 +449,8 @@ async def _execute_query(request: QueryRequest) -> QueryResponse:
             pipeline.query,
             query_for_rag,
             request.num_chunks,
-            request.min_score
+            request.min_score,
+            masked_history
         )
 
         # Output guardrails (check results are reported, answer is not filtered)

@@ -116,7 +116,8 @@ class OpenAIClient:
     def generate_response(self,
                          query: str, 
                          context_chunks: List[Dict[str, Any]],
-                         system_prompt: str = None) -> Dict[str, Any]:
+                         system_prompt: str = None,
+                         history: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
         """
         Generate a response using retrieved context chunks
         
@@ -124,6 +125,7 @@ class OpenAIClient:
             query (str): User query
             context_chunks (List[Dict]): Retrieved context chunks
             system_prompt (str): Custom system prompt
+            history (Optional[List[Dict]]): Earlier turns as {"role", "content"}, oldest first
             
         Returns:
             Dict: Response with metadata
@@ -147,6 +149,7 @@ class OpenAIClient:
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
+                    *(history or []),
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=self.temperature,
