@@ -54,3 +54,17 @@ def test_without_history_the_prompt_is_unchanged():
     client = make_client()
     client.generate_response("only question", CHUNKS)
     assert [m["role"] for m in sent_messages(client)] == ["system", "user"]
+
+
+def test_prompt_tells_the_model_to_use_the_conversation_only_when_there_is_history():
+    client = make_client()
+    client.generate_response("second question", CHUNKS, history=HISTORY)
+    with_history = sent_messages(client)[-1]["content"]
+    assert with_history.startswith("This is a continuing conversation")
+
+    client = make_client()
+    client.generate_response("only question", CHUNKS)
+    without_history = sent_messages(client)[-1]["content"]
+    assert "continuing conversation" not in without_history
+    assert without_history == client._build_user_prompt("only question", client._build_context(CHUNKS))
+
